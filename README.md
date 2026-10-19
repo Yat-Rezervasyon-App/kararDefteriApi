@@ -33,8 +33,6 @@ Mentor: **@ahmettkuurt**. Her iş ayrı branch'te geliştirilir, main'e PR açı
 Bir stajyerin ön incelemesinden sonra mentor son incelemeyi yapar.
 
 - [Branch ve PR çalışma düzeni](CONTRIBUTING.md)
-- [GitHub korumasını etkinleştirme](.github/github-setup.md)
-- [İçe aktarılabilir main ruleset dosyası](.github/main-ruleset.json)
 
 CI, main'e açılan PR'larda ve main push'larında Java 21 ile Maven verify çalıştırır.
 Kontrol adı `build-and-test` olarak sabittir. GitHub branch koruması dosya eklemekle
