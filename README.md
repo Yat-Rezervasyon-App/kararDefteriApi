@@ -93,7 +93,6 @@ Mentor: **@ahmettkuurt**. Her iş güncel main'den açılan ayrı branch'te geli
 
 - [Mimari ve yeni özellik geliştirme sırası](ARCHITECTURE.md)
 - [Branch ve PR çalışma düzeni](CONTRIBUTING.md)
-- [GitHub kurulum notları](.github/github-setup.md)
 
 Yeni migration sürümlerini ekip içinde koordine edin. Controller yalnız service'i,
 service repository'yi çağırır. Entity'leri HTTP cevabında doğrudan döndürmeyin; DTO
