@@ -97,4 +97,4 @@ Mentor: **@ahmettkuurt**. Her iş güncel main'den açılan ayrı branch'te geli
 Yeni migration sürümlerini ekip içinde koordine edin. Controller yalnız service'i,
 service repository'yi çağırır. Entity'leri HTTP cevabında doğrudan döndürmeyin; DTO
 kullanın. Giriş ve iş CRUD API'leri haftalık görevlerle eklenecek. `system`
-modülünde çalışan controller/service örneği bulunur.
+modülünde çalışan controller/service örneği bulunur..
