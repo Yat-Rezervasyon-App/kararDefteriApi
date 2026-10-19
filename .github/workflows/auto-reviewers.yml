@@ -1,0 +1,43 @@
+name: Assign peer reviewer
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  request-peer-review:
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Metadata only: never check out or execute code from the pull request.
+      - name: Request the assigned peer reviewer
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const pull = context.payload.pull_request;
+            const peers = {
+              ccagrimiracozlu: 'buse321',
+              buse321: 'kardelensimsek',
+              kardelensimsek: 'ccagrimiracozlu'
+            };
+            const reviewer = peers[pull.user.login.toLowerCase()];
+            if (!reviewer) {
+              core.info('No peer assignment for this author.');
+              return;
+            }
+            if (pull.requested_reviewers.some(user => user.login.toLowerCase() === reviewer)) {
+              core.info('Peer review is already requested.');
+              return;
+            }
+            await github.rest.pulls.requestReviewers({
+              ...context.repo,
+              pull_number: pull.number,
+              reviewers: [reviewer]
+            });
