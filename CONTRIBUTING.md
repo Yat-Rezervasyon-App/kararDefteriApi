@@ -58,7 +58,9 @@ Windows PowerShell:
 .\mvnw.cmd --batch-mode --no-transfer-progress verify
 ```
 
-Mevcut başlangıç projesinde yalnızca Spring uygulama context testi vardır.
-Özellikler eklendikçe ilgili iş kurallarını doğrulayan testleri PR'a ekle.
+Normal verify HTTP ve ortak hata testlerini çalıştırır. PostgreSQL
+entegrasyonu için veritabanı açıkken `DB_NAME=karardefteri_test ./mvnw -Ppostgres-it verify` çalıştır.
+CI her iki grubu da doğrular. Controller → Service → Repository düzenini
+kullan; [yeni özellik geliştirme sırasını](ARCHITECTURE.md) izle.
 
 GitHub tarafındaki ilk kurulum için [kurulum adımlarını](.github/github-setup.md) izle.
