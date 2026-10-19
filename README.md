@@ -1,41 +1,101 @@
 # KararDefteri API
 
-Projeleri, toplantı notlarını, kararları, öncelikli görevleri ve özet sayılarını
-yönetmek için geliştirilecek Spring Boot
-backend projesi. Mevcut başlangıç iskeleti Java 21 ve Maven kullanır; iş modülleri
-ve PostgreSQL entegrasyonu stajyer görevleriyle eklenecektir.
+Proje bazlı toplantı, karar ve görev takibi için modül bazlı katmanlı
+başlangıç iskeleti. Java 21, Spring Boot 4.1.1, Spring MVC, JPA, PostgreSQL ve
+Flyway kullanılır. İş modüllerinin CRUD ve giriş kuralları stajyerlerce eklenecek;
+çalışan referans akış `system` modülündedir.
 
 ## Yerelde çalıştırma
 
-Java 21 kurulu olmalıdır. Maven Wrapper gerekli Maven sürümünü ilk çalışmada indirir.
+Java 21 ve çalışan bir PostgreSQL 16 veya daha yeni sürüm gereklidir. Maven Wrapper
+Maven'ı ilk çalışmada indirir. PostgreSQL doğrudan makinede veya erişilebilir bir
+sunucuda çalışır.
+
+İlk kurulumda PostgreSQL yönetici hesabıyla bağlanıp veritabanlarını oluştur:
+
+```sql
+CREATE USER karardefteri WITH PASSWORD 'karardefteri_local_only';
+CREATE DATABASE karardefteri OWNER karardefteri;
+CREATE DATABASE karardefteri_test OWNER karardefteri;
+```
+
+Proje kökünde yerel ayarları kopyala ve uygulamayı başlat:
 
 ```sh
+cp .env.example .env
 ./mvnw spring-boot:run
 ```
 
-## Derleme ve test
+`.env` yerel ayarlardır ve Git'e dahil edilmez. Örnek parola yalnız yerel geliştirme
+içindir. Spring Boot `.env` dosyasını properties olarak okur. PostgreSQL başka
+sunucudaysa DB_URL, DB_USERNAME ve DB_PASSWORD ortam değişkenlerini kullan.
+
+macOS'ta PostgreSQL kurulu değilse Homebrew ile kurulum yapılabilir:
+
+```sh
+brew install postgresql@17
+brew services start postgresql@17
+export PATH="$(brew --prefix postgresql@17)/bin:$PATH"
+psql -d postgres
+```
+
+Son komut SQL oturumunu açar; yukarıdaki ilk kurulum SQL'lerini burada çalıştır.
+
+```sh
+curl http://localhost:8080/api/system/info
+curl http://localhost:8080/actuator/health
+```
+
+System info örnek cevabı:
+
+```json
+{"name":"kararDefteriApi","version":"0.0.1-SNAPSHOT"}
+```
+
+Örnek `V1__create_users.sql.example` dosyası otomatik çalıştırılmaz ve tablo
+oluşturmaz. Gerçek migration, kullanıcı entity'si ve CRUD'u stajyerlerce eklenecek. [Migration rehberi](src/main/resources/db/migration/README.md)
+entity eşlemelerini ve yeni SQL dosyası ekleme adımlarını açıklar.
+
+Windows PowerShell'de `cp` yerine `Copy-Item`, `./mvnw` yerine `.\mvnw.cmd` kullan.
+
+## Testler
+
+Veritabanı gerektirmeyen HTTP ve ortak hata testleri:
 
 ```sh
 ./mvnw --batch-mode --no-transfer-progress verify
 ```
 
-Windows'ta `./mvnw` yerine `.\mvnw.cmd` kullan.
+PostgreSQL açıkken uygulama context'i, JDBC ve Flyway entegrasyonunu da doğrula:
 
-## Ekip ve inceleme düzeni
+```sh
+DB_NAME=karardefteri_test ./mvnw --batch-mode --no-transfer-progress -Ppostgres-it verify
+```
 
-| Geliştirici | Sorumluluk | Ön inceleme |
+CI, Ubuntu runner üzerindeki PostgreSQL servisini doğrudan başlatır ve test
+veritabanıyla entegrasyon profilini çalıştırır. Gerekli kontrolün adı
+`build-and-test` olarak korunmuştur. Normal verify PostgreSQL entegrasyon testini
+çalıştırmaz; bu test `postgres-it` Maven profiliyle Failsafe üzerinden zorunlu olur.
+
+## Paket yapısı ve ekip
+
+Paket kökü `com.tein.karardefteri`. İş modüllerinde controller, service,
+repository, entity ve dto paketleri bulunur. İhtiyaç olmayan katmanda sınıf yazılmaz.
+
+| Geliştirici | Modüller | Ön inceleme |
 |---|---|---|
-| Çağrı @ccagrimiracozlu | Kullanıcı, giriş ve projeler | Buse @buse321 |
-| Buse @buse321 | Toplantı, not ve kararlar | Kardelen @kardelensimsek |
-| Kardelen @kardelensimsek | Görevler, filtreler ve özet API’leri | Çağrı @ccagrimiracozlu |
+| Çağrı @ccagrimiracozlu | user, project | Buse @buse321 |
+| Buse @buse321 | meeting, decision | Kardelen @kardelensimsek |
+| Kardelen @kardelensimsek | task, summary | Çağrı @ccagrimiracozlu |
 
-Mentor: **@ahmettkuurt**. Her iş ayrı branch'te geliştirilir, main'e PR açılır.
-Bir stajyerin ön incelemesinden sonra mentor son incelemeyi yapar.
+Mentor: **@ahmettkuurt**. Her iş güncel main'den açılan ayrı branch'te geliştirilir.
+Ön inceleme sonrası mentor son incelemeyi ve merge işlemini yapar.
 
+- [Mimari ve yeni özellik geliştirme sırası](ARCHITECTURE.md)
 - [Branch ve PR çalışma düzeni](CONTRIBUTING.md)
-- [GitHub korumasını etkinleştirme](.github/github-setup.md)
-- [İçe aktarılabilir main ruleset dosyası](.github/main-ruleset.json)
+- [GitHub kurulum notları](.github/github-setup.md)
 
-CI, main'e açılan PR'larda ve main push'larında Java 21 ile Maven verify çalıştırır.
-Kontrol adı `build-and-test` olarak sabittir. GitHub branch koruması dosya eklemekle
-etkinleşmez; kurulum adımlarındaki ruleset içe aktarma işlemi de tamamlanmalıdır.
+Yeni migration sürümlerini ekip içinde koordine edin. Controller yalnız service'i,
+service repository'yi çağırır. Entity'leri HTTP cevabında doğrudan döndürmeyin; DTO
+kullanın. Giriş ve iş CRUD API'leri haftalık görevlerle eklenecek. `system`
+modülünde çalışan controller/service örneği bulunur.

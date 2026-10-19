@@ -72,10 +72,11 @@ zorlamaz. Merge işlemini mentorun yapması ekip çalışma kuralıdır.
 
 ## PostgreSQL eklendiğinde
 
-Başlangıç projesinde veritabanı bağımlılığı yoktur; bu nedenle CI'da şu anda
-PostgreSQL servisi çalıştırılmaz. JPA/Flyway eklendiğinde aynı PR içinde test
-profili ve PostgreSQL test altyapısı da eklenmelidir. Testleri kapatarak CI'ı
-geçirmeyin; varsayılan context testi de veritabanı yapılandırmasından etkilenir.
+CI, Ubuntu runner üzerinde kurulu PostgreSQL servisini doğrudan başlatır ve
+`-Ppostgres-it verify` çalıştırır. Container servisi kullanılmaz.
+`build-and-test` kontrolünün adı korunur. Yerel kurulum ve test komutları README'de
+bulunur. İş tabloları için ilk Flyway migration'larını stajyerler ekler. Yeni bir
+entity eklendiğinde migration ve PostgreSQL entegrasyon testi aynı PR'da olmalıdır.
 
 ## Kaynaklar
 

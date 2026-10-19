@@ -17,8 +17,12 @@ concurrency:
 jobs:
   build-and-test:
     name: build-and-test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
+    env:
+      DB_URL: jdbc:postgresql://localhost:5432/karardefteri_test
+      DB_USERNAME: karardefteri_test
+      DB_PASSWORD: ci_only_password
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -32,5 +36,12 @@ jobs:
           java-version: '21'
           cache: maven
 
+      - name: Start PostgreSQL
+        run: |
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql --set=ON_ERROR_STOP=1 --command="CREATE ROLE karardefteri_test WITH LOGIN PASSWORD 'ci_only_password';"
+          sudo -u postgres psql --set=ON_ERROR_STOP=1 --command="CREATE DATABASE karardefteri_test OWNER karardefteri_test;"
+          pg_isready -h localhost -p 5432
+
       - name: Build and run tests
-        run: bash ./mvnw --batch-mode --no-transfer-progress verify
+        run: bash ./mvnw --batch-mode --no-transfer-progress -Ppostgres-it verify

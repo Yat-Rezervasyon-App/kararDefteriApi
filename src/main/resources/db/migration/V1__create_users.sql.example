@@ -1,0 +1,14 @@
+-- Yalnız örnektir; .sql.example uzantısı nedeniyle Flyway tarafından çalıştırılmaz.
+-- Kullanılacaksa ayrı bir .sql migration dosyasına kopyalayıp modele göre düzenleyin.
+-- UUID uygulamada üretilir; PostgreSQL eklentisi gerektirmez.
+-- Uygulanmış migration dosyasını değiştirmeyin; değişiklik için yeni sürüm ekleyin.
+CREATE TABLE users (
+    id UUID PRIMARY KEY,
+    full_name VARCHAR(120) NOT NULL,
+    email VARCHAR(254) NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_users_email UNIQUE (email)
+);
+
+-- Ham parola saklanmaz; password_hash alanına parola özeti yazılır.
