@@ -9,7 +9,6 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,12 +25,27 @@ public class MeetingController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Meeting>> getAllMeetings() {
+    public ResponseEntity<List<Meeting>> getAllMeetings(HttpSession session) {
+        UUID currentUserId = getUserId(session);
+
+        if (currentUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         return ResponseEntity.ok(meetingService.getAllMeetings());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Meeting> getMeeting(@PathVariable UUID id) {
+    public ResponseEntity<Meeting> getMeeting(
+            @PathVariable UUID id,
+            HttpSession session) {
+
+        UUID currentUserId = getUserId(session);
+
+        if (currentUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         return ResponseEntity.ok(meetingService.getMeetingById(id));
     }
 
@@ -54,7 +68,7 @@ public class MeetingController {
     @PutMapping("/{id}")
     public ResponseEntity<Meeting> updateMeeting(
             @PathVariable UUID id,
-            @RequestBody MeetingUpdateRequest request,
+            @Valid @RequestBody MeetingUpdateRequest request,
             HttpSession session) {
 
         UUID currentUserId = getUserId(session);

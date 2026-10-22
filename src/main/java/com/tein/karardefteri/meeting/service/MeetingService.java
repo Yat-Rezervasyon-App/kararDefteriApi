@@ -90,10 +90,15 @@ public class MeetingService {
         Meeting meeting = getMeetingById(id);
         checkPermission(meeting, currentUserId, isAdmin);
 
+        if (title != null && title.length() > 200) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Başlık en fazla 200 karakter olabilir.");
+        }
+
         if (title != null && !title.isBlank()) {
             meeting.setTitle(title);
         }
-
         meeting.setDescription(description);
 
         return meetingRepository.save(meeting);
