@@ -6,8 +6,13 @@ import com.tein.karardefteri.task.dto.TaskResponseDto;
 import com.tein.karardefteri.task.service.TaskService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,23 +28,18 @@ public class TaskController {
     }
 
     @PostMapping
-    public ResponseEntity<TaskResponseDto> createTask(
+    @ResponseStatus(HttpStatus.CREATED)
+    public TaskResponseDto createTask(
             @PathVariable UUID meetingId,
-            @Valid @RequestBody TaskRequestDto requestDto) {
-
-        TaskResponseDto createdTask =
-                taskService.createTask(meetingId, requestDto);
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdTask);
+            @Valid @RequestBody TaskRequestDto request
+    ) {
+        return taskService.createTask(meetingId, request);
     }
 
     @GetMapping
-    public ResponseEntity<List<TaskResponseDto>> getTasksByMeetingId(
-            @PathVariable UUID meetingId) {
-
-        List<TaskResponseDto> tasks =
-                taskService.getTasksByMeetingId(meetingId);
-
-        return ResponseEntity.ok(tasks);
+    public List<TaskResponseDto> getTasks(
+            @PathVariable UUID meetingId
+    ) {
+        return taskService.getTasksByMeetingId(meetingId);
     }
 }
