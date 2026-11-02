@@ -8,6 +8,7 @@ import com.tein.karardefteri.user.entity.User;
 import com.tein.karardefteri.user.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import com.tein.karardefteri.common.exception.ResourceNotFoundException;
 
 import java.util.List;
 
@@ -30,6 +31,16 @@ public class UserService {
                 .stream()
                 .map(UserResponseDTO::from)
                 .toList();
+    }
+
+    public UserResponseDTO getCurrentUser(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "USER_NOT_FOUND",
+                        "Kullanıcı bulunamadı."
+                ));
+
+        return UserResponseDTO.from(user);
     }
 
     public UserResponseDTO createUser(UserRequestDTO request) {
