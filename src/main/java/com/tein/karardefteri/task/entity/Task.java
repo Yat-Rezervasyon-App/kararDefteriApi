@@ -53,7 +53,6 @@ public class Task {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    // İlk kayıt oluşturulurken tarihleri ayarlar.
     @PrePersist
     protected void onCreate() {
         Instant now = Instant.now();
@@ -61,13 +60,10 @@ public class Task {
         updatedAt = now;
     }
 
-    // Kayıt güncellendiğinde güncelleme tarihini yeniler.
     @PreUpdate
     protected void onUpdate() {
         updatedAt = Instant.now();
     }
-
-    // Getter ve Setter metotları
 
     public Long getId() {
         return id;
