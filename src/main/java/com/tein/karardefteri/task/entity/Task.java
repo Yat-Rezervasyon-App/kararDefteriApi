@@ -1,4 +1,5 @@
- package com.tein.karardefteri.task.entity;
+
+package com.tein.karardefteri.task.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
@@ -42,6 +43,7 @@ public class Task {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    // İlk kayıt oluşturulurken çalışır.
     @PrePersist
     protected void onCreate() {
         Instant now = Instant.now();
@@ -49,26 +51,79 @@ public class Task {
         updatedAt = now;
     }
 
+    // Kayıt güncellendiğinde çalışır.
     @PreUpdate
     protected void onUpdate() {
         updatedAt = Instant.now();
     }
 
-    public Long getId() { return id; }
-    public UUID getMeetingId() { return meetingId; }
-    public void setMeetingId(UUID meetingId) { this.meetingId = meetingId; }
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-    public UUID getAssigneeId() { return assigneeId; }
-    public void setAssigneeId(UUID assigneeId) { this.assigneeId = assigneeId; }
-    public OffsetDateTime getDueDate() { return dueDate; }
-    public void setDueDate(OffsetDateTime dueDate) { this.dueDate = dueDate; }
-    public TaskStatus getStatus() { return status; }
-    public void setStatus(TaskStatus status) { this.status = status; }
-    public TaskPriority getPriority() { return priority; }
-    public void setPriority(TaskPriority priority) { this.priority = priority; }
-    public Instant getCreatedAt() { return createdAt; }
-    public Instant getUpdatedAt() { return updatedAt; }
+    // Getter ve Setter metotları
+
+    public Long getId() {
+        return id;
+    }
+
+    public UUID getMeetingId() {
+        return meetingId;
+    }
+
+    public void setMeetingId(UUID meetingId) {
+        this.meetingId = meetingId;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public UUID getAssigneeId() {
+        return assigneeId;
+    }
+
+    public void setAssigneeId(UUID assigneeId) {
+        this.assigneeId = assigneeId;
+    }
+
+    public OffsetDateTime getDueDate() {
+        return dueDate;
+    }
+
+    public void setDueDate(OffsetDateTime dueDate) {
+        this.dueDate = dueDate;
+    }
+
+    public TaskStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(TaskStatus status) {
+        this.status = status;
+    }
+
+    public TaskPriority getPriority() {
+        return priority;
+    }
+
+    public void setPriority(TaskPriority priority) {
+        this.priority = priority;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
 }

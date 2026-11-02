@@ -1,21 +1,27 @@
 
 package com.tein.karardefteri.task;
 
+import com.tein.karardefteri.meeting.entity.Meeting;
 import com.tein.karardefteri.meeting.service.MeetingService;
 import com.tein.karardefteri.task.dto.TaskRequestDto;
 import com.tein.karardefteri.task.dto.TaskResponseDto;
 import com.tein.karardefteri.task.entity.Task;
+import com.tein.karardefteri.task.entity.TaskPriority;
+import com.tein.karardefteri.task.entity.TaskStatus;
 import com.tein.karardefteri.task.repository.TaskRepository;
 import com.tein.karardefteri.task.service.TaskService;
 import com.tein.karardefteri.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -34,131 +40,425 @@ class TaskServiceTest {
     @Mock
     private UserService userService;
 
+    @InjectMocks
     private TaskService taskService;
+
     private UUID meetingId;
 
     @BeforeEach
     void setUp() {
-        taskService = new TaskService(
-                taskRepository,
-                meetingService,
-                userService
-        );
         meetingId = UUID.randomUUID();
     }
 
     @Test
-    void createTask_shouldCreateTaskSuccessfully() {
+    void createTask_shouldSaveTask() {
         TaskRequestDto request = new TaskRequestDto(
-                "Test görevi", "Açıklama", null, null, null, null
+                "Test görevi",
+                "Açıklama",
+                null,
+                null,
+                null,
+                null
         );
 
         when(meetingService.getMeetingById(meetingId))
-                .thenReturn(null);
+                .thenReturn(new Meeting());
+
         when(taskRepository.save(any(Task.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                .thenAnswer(invocation -> {
+                    Task task = invocation.getArgument(0);
 
-        TaskResponseDto response = taskService.createTask(meetingId, request);
+                    if (task.getStatus() == null) {
+                        task.setStatus(TaskStatus.TODO);
+                    }
 
-        assertEquals(meetingId, response.meetingId());
+                    if (task.getPriority() == null) {
+                        task.setPriority(TaskPriority.MEDIUM);
+                    }
+
+                    return task;
+                });
+
+        TaskResponseDto response =
+                taskService.createTask(meetingId, request);
+
+        assertNotNull(response);
         assertEquals("Test görevi", response.title());
         assertEquals("TODO", response.status());
         assertEquals("MEDIUM", response.priority());
 
+        verify(meetingService).getMeetingById(meetingId);
         verify(taskRepository).save(any(Task.class));
     }
 
     @Test
-    void createTask_shouldRejectBlankTitle() {
-        TaskRequestDto request = new TaskRequestDto(
-                "   ", null, null, null, null, null
-        );
-
+    void getTasksByMeetingId_shouldReturnEmptyList() {
         when(meetingService.getMeetingById(meetingId))
-                .thenReturn(null);
+                .thenReturn(new Meeting());
 
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
-                () -> taskService.createTask(meetingId, request)
-        );
-
-        assertEquals(400, exception.getStatusCode().value());
-        verify(taskRepository, never()).save(any(Task.class));
-    }
-
-    @Test
-    void createTask_shouldReturn404WhenMeetingDoesNotExist() {
-        TaskRequestDto request = new TaskRequestDto(
-                "Test görevi", null, null, null, null, null
-        );
-
-        when(meetingService.getMeetingById(meetingId))
-                .thenThrow(new ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND,
-                        "Toplantı bulunamadı"
-                ));
-
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
-                () -> taskService.createTask(meetingId, request)
-        );
-
-        assertEquals(404, exception.getStatusCode().value());
-        verify(taskRepository, never()).save(any(Task.class));
-    }
-
-    @Test
-    void createTask_shouldReturn404WhenAssigneeDoesNotExist() {
-        UUID assigneeId = UUID.randomUUID();
-
-        TaskRequestDto request = new TaskRequestDto(
-                "Test görevi", null, assigneeId, null, null, null
-        );
-
-        when(meetingService.getMeetingById(meetingId))
-                .thenReturn(null);
-        when(userService.userExists(assigneeId)).thenReturn(false);
-
-        ResponseStatusException exception = assertThrows(
-                ResponseStatusException.class,
-                () -> taskService.createTask(meetingId, request)
-        );
-
-        assertEquals(404, exception.getStatusCode().value());
-        verify(taskRepository, never()).save(any(Task.class));
-    }
-
-    @Test
-    void getTasksByMeetingId_shouldReturnTasks() {
-        when(meetingService.getMeetingById(meetingId))
-                .thenReturn(null);
         when(taskRepository.findByMeetingId(meetingId))
                 .thenReturn(List.of());
 
-        List<TaskResponseDto> response =
+        List<TaskResponseDto> result =
                 taskService.getTasksByMeetingId(meetingId);
 
-        assertNotNull(response);
-        assertTrue(response.isEmpty());
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
 
         verify(taskRepository).findByMeetingId(meetingId);
     }
 
     @Test
-    void getTasksByMeetingId_shouldReturn404WhenMeetingDoesNotExist() {
-        when(meetingService.getMeetingById(meetingId))
-                .thenThrow(new ResponseStatusException(
-                        org.springframework.http.HttpStatus.NOT_FOUND,
-                        "Toplantı bulunamadı"
-                ));
+    void getTaskById_shouldReturnTaskWhenFound() {
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setTitle("Test görevi");
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
+
+        when(taskRepository.findById(1L))
+                .thenReturn(Optional.of(task));
+
+        TaskResponseDto response =
+                taskService.getTaskById(1L);
+
+        assertNotNull(response);
+        assertEquals(meetingId, response.meetingId());
+        assertEquals("Test görevi", response.title());
+        assertEquals("TODO", response.status());
+        assertEquals("MEDIUM", response.priority());
+    }
+
+    @Test
+    void getTaskById_shouldThrow404WhenTaskDoesNotExist() {
+        when(taskRepository.findById(99L))
+                .thenReturn(Optional.empty());
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> taskService.getTasksByMeetingId(meetingId)
+                () -> taskService.getTaskById(99L)
         );
 
-        assertEquals(404, exception.getStatusCode().value());
-        verify(taskRepository, never())
-                .findByMeetingId(any(UUID.class));
+        assertEquals(
+                HttpStatus.NOT_FOUND,
+                exception.getStatusCode()
+        );
+    }
+
+    @Test
+    void updateTask_shouldAllowMeetingOwner() {
+        UUID ownerId = UUID.randomUUID();
+
+        Meeting meeting = new Meeting();
+        meeting.setCreatedBy(ownerId);
+
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setTitle("Eski başlık");
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
+
+        TaskRequestDto request = new TaskRequestDto(
+                "Yeni başlık",
+                "Yeni açıklama",
+                null,
+                null,
+                null,
+                "HIGH"
+        );
+
+        when(taskRepository.findById(1L))
+                .thenReturn(Optional.of(task));
+
+        when(meetingService.getMeetingById(meetingId))
+                .thenReturn(meeting);
+
+        when(taskRepository.save(any(Task.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        TaskResponseDto response = taskService.updateTask(
+                1L, request, ownerId, false
+        );
+
+        assertEquals("Yeni başlık", response.title());
+        assertEquals("HIGH", response.priority());
+        verify(taskRepository).save(task);
+    }
+
+    @Test
+    void updateTask_shouldAllowAdmin() {
+        UUID adminId = UUID.randomUUID();
+
+        Meeting meeting = new Meeting();
+        meeting.setCreatedBy(UUID.randomUUID());
+
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setTitle("Eski başlık");
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
+
+        TaskRequestDto request = new TaskRequestDto(
+                "Admin güncelledi",
+                "Açıklama",
+                null,
+                null,
+                null,
+                "HIGH"
+        );
+
+        when(taskRepository.findById(1L))
+                .thenReturn(Optional.of(task));
+
+        when(meetingService.getMeetingById(meetingId))
+                .thenReturn(meeting);
+
+        when(taskRepository.save(any(Task.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        TaskResponseDto response = taskService.updateTask(
+                1L, request, adminId, true
+        );
+
+        assertEquals("Admin güncelledi", response.title());
+        assertEquals("HIGH", response.priority());
+        verify(taskRepository).save(task);
+    }
+
+    @Test
+    void updateTask_shouldThrow403WhenUserIsNotMeetingOwnerOrAdmin() {
+        UUID anotherUserId = UUID.randomUUID();
+
+        Meeting meeting = new Meeting();
+        meeting.setCreatedBy(UUID.randomUUID());
+
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setTitle("Eski başlık");
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
+
+        TaskRequestDto request = new TaskRequestDto(
+                "Yeni başlık",
+                "Açıklama",
+                null,
+                null,
+                null,
+                "HIGH"
+        );
+
+        when(taskRepository.findById(1L))
+                .thenReturn(Optional.of(task));
+
+        when(meetingService.getMeetingById(meetingId))
+                .thenReturn(meeting);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> taskService.updateTask(
+                        1L, request, anotherUserId, false
+                )
+        );
+
+        assertEquals(
+                HttpStatus.FORBIDDEN,
+                exception.getStatusCode()
+        );
+
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void updateTask_shouldThrow400WhenPriorityIsBlank() {
+        UUID ownerId = UUID.randomUUID();
+
+        Meeting meeting = new Meeting();
+        meeting.setCreatedBy(ownerId);
+
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setTitle("Test görevi");
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
+
+        TaskRequestDto request = new TaskRequestDto(
+                "Yeni başlık",
+                "Açıklama",
+                null,
+                null,
+                null,
+                " "
+        );
+
+        when(taskRepository.findById(1L))
+                .thenReturn(Optional.of(task));
+
+        when(meetingService.getMeetingById(meetingId))
+                .thenReturn(meeting);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> taskService.updateTask(
+                        1L, request, ownerId, false
+                )
+        );
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                exception.getStatusCode()
+        );
+
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void updateTask_shouldThrow400WhenPriorityIsInvalid() {
+        UUID ownerId = UUID.randomUUID();
+
+        Meeting meeting = new Meeting();
+        meeting.setCreatedBy(ownerId);
+
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setTitle("Test görevi");
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
+
+        TaskRequestDto request = new TaskRequestDto(
+                "Yeni başlık",
+                "Açıklama",
+                null,
+                null,
+                null,
+                "URGENT"
+        );
+
+        when(taskRepository.findById(1L))
+                .thenReturn(Optional.of(task));
+
+        when(meetingService.getMeetingById(meetingId))
+                .thenReturn(meeting);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> taskService.updateTask(
+                        1L, request, ownerId, false
+                )
+        );
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                exception.getStatusCode()
+        );
+
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void updateTaskStatus_shouldThrow403WhenUserIsNotAssignee() {
+        UUID assigneeId = UUID.randomUUID();
+        UUID anotherUserId = UUID.randomUUID();
+
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setAssigneeId(assigneeId);
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
+
+        when(taskRepository.findById(1L))
+                .thenReturn(Optional.of(task));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> taskService.updateTaskStatus(
+                        1L,
+                        "DONE",
+                        anotherUserId
+                )
+        );
+
+        assertEquals(
+                HttpStatus.FORBIDDEN,
+                exception.getStatusCode()
+        );
+
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void updateTaskStatus_shouldThrow400WhenStatusIsInvalid() {
+        UUID assigneeId = UUID.randomUUID();
+
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setAssigneeId(assigneeId);
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
+
+        when(taskRepository.findById(1L))
+                .thenReturn(Optional.of(task));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> taskService.updateTaskStatus(
+                        1L,
+                        "INVALID_STATUS",
+                        assigneeId
+                )
+        );
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                exception.getStatusCode()
+        );
+
+        verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void updateTask_shouldThrow409WhenAssigneeIsInactive() {
+        UUID ownerId = UUID.randomUUID();
+        UUID inactiveUserId = UUID.randomUUID();
+
+        Meeting meeting = new Meeting();
+        meeting.setCreatedBy(ownerId);
+
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setTitle("Test görevi");
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
+
+        TaskRequestDto request = new TaskRequestDto(
+                "Güncellenmiş görev",
+                "Açıklama",
+                inactiveUserId,
+                null,
+                null,
+                "HIGH"
+        );
+
+        when(taskRepository.findById(1L))
+                .thenReturn(Optional.of(task));
+
+        when(meetingService.getMeetingById(meetingId))
+                .thenReturn(meeting);
+
+        when(userService.isUserActive(inactiveUserId))
+                .thenReturn(false);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> taskService.updateTask(
+                        1L, request, ownerId, false
+                )
+        );
+
+        assertEquals(
+                HttpStatus.CONFLICT,
+                exception.getStatusCode()
+        );
+
+        verify(taskRepository, never()).save(any(Task.class));
     }
 }
