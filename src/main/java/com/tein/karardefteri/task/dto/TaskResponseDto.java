@@ -1,8 +1,4 @@
-
 package com.tein.karardefteri.task.dto;
-
-import com.tein.karardefteri.task.entity.TaskPriority;
-import com.tein.karardefteri.task.entity.TaskStatus;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -15,8 +11,8 @@ public record TaskResponseDto(
         String description,
         UUID assigneeId,
         OffsetDateTime dueDate,
-        TaskStatus status,
-        TaskPriority priority,
+        String status,
+        String priority,
         Instant createdAt,
         Instant updatedAt
 ) {}

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import com.tein.karardefteri.common.exception.ResourceNotFoundException;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class UserService {
@@ -42,6 +43,9 @@ public class UserService {
 
         return UserResponseDTO.from(user);
     }
+    public boolean userExists(UUID id) {
+        return userRepository.existsById(id);
+    }
 
     public UserResponseDTO createUser(UserRequestDTO request) {
         if (userRepository.existsByEmail(request.email())) {
@@ -54,7 +58,9 @@ public class UserService {
         User user = new User();
         user.setFullName(request.fullName());
         user.setEmail(request.email());
-        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.setPasswordHash(
+                passwordEncoder.encode(request.password())
+        );
         user.setRole(request.role());
 
         User savedUser = userRepository.save(user);
