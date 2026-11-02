@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import com.tein.karardefteri.user.entity.User;
+import com.tein.karardefteri.user.repository.UserRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.List;
 
@@ -20,9 +24,11 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final UserRepository userRepository;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService , UserRepository userRepository) {
         this.userService = userService;
+        this.userRepository = userRepository;
     }
 
     @GetMapping
@@ -36,5 +42,20 @@ public class UserController {
             @Valid @RequestBody UserRequestDTO request
     ) {
         return userService.createUser(request);
+    }
+
+    @GetMapping("/me")
+    public UserResponseDTO getCurrentUser(Authentication authentication){
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+
+        User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() ->
+                        new
+                        org.springframework.web.server.ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Kullanıcı bulunamadı"
+                        )
+                );
+        return UserResponseDTO.from(user);
     }
 }
