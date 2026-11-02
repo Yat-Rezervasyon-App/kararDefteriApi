@@ -47,6 +47,10 @@ public class UserService {
         return userRepository.existsById(id);
     }
 
+    public boolean isUserActive(UUID id) {
+        return userRepository.existsByIdAndActiveTrue(id);
+    }
+
     public UserResponseDTO createUser(UserRequestDTO request) {
         if (userRepository.existsByEmail(request.email())) {
             throw new BusinessRuleViolationException(
