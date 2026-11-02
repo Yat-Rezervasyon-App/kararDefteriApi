@@ -10,7 +10,6 @@ import com.tein.karardefteri.task.entity.TaskPriority;
 import com.tein.karardefteri.task.entity.TaskStatus;
 import com.tein.karardefteri.task.repository.TaskRepository;
 import com.tein.karardefteri.user.service.UserService;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,17 +35,20 @@ public class TaskService {
         this.userService = userService;
     }
 
-    // Görev oluşturma
     @Transactional
     public TaskResponseDto createTask(
             UUID meetingId,
             TaskRequestDto requestDto) {
 
-        // Toplantı mevcut mu?
         meetingService.getMeetingById(meetingId);
-
-        // Atanacak kullanıcı aktif mi?
         checkAssigneeIsActive(requestDto.assigneeId());
+
+        if (requestDto.title() == null || requestDto.title().isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Task title cannot be empty"
+            );
+        }
 
         Task task = new Task();
 
@@ -56,19 +58,15 @@ public class TaskService {
         task.setAssigneeId(requestDto.assigneeId());
         task.setDueDate(requestDto.dueDate());
 
-        // Varsayılan görev durumu
         if (requestDto.status() == null
                 || requestDto.status().isBlank()) {
-
             task.setStatus(TaskStatus.TODO);
         } else {
             task.setStatus(parseStatus(requestDto.status()));
         }
 
-        // Varsayılan öncelik
         if (requestDto.priority() == null
                 || requestDto.priority().isBlank()) {
-
             task.setPriority(TaskPriority.MEDIUM);
         } else {
             task.setPriority(parsePriority(requestDto.priority()));
@@ -77,7 +75,6 @@ public class TaskService {
         return mapToDto(taskRepository.save(task));
     }
 
-    // Toplantıya ait görevleri listeleme
     @Transactional(readOnly = true)
     public List<TaskResponseDto> getTasksByMeetingId(UUID meetingId) {
 
@@ -89,14 +86,12 @@ public class TaskService {
                 .toList();
     }
 
-    // ID ile görev getirme
     @Transactional(readOnly = true)
     public TaskResponseDto getTaskById(Long id) {
 
         return mapToDto(findTaskById(id));
     }
 
-    // Görev bilgilerini güncelleme
     @Transactional
     public TaskResponseDto updateTask(
             Long id,
@@ -110,7 +105,6 @@ public class TaskService {
                 task.getMeetingId()
         );
 
-        // Sadece toplantı sahibi veya ADMIN güncelleyebilir.
         if (!isAdmin
                 && (currentUserId == null
                 || !currentUserId.equals(meeting.getCreatedBy()))) {
@@ -121,25 +115,26 @@ public class TaskService {
             );
         }
 
-        // Öncelik zorunludur.
+        if (requestDto.title() == null || requestDto.title().isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Task title cannot be empty"
+            );
+        }
+
         TaskPriority priority = parsePriority(requestDto.priority());
 
-        // Atanacak kullanıcı aktif mi?
         checkAssigneeIsActive(requestDto.assigneeId());
 
-        // Görev bilgilerini güncelle.
         task.setTitle(requestDto.title().trim());
         task.setDescription(requestDto.description());
         task.setAssigneeId(requestDto.assigneeId());
         task.setDueDate(requestDto.dueDate());
         task.setPriority(priority);
 
-        // meetingId ve status burada değiştirilmez.
-
         return mapToDto(taskRepository.save(task));
     }
 
-    // Görev durumunu güncelleme
     @Transactional
     public TaskResponseDto updateTaskStatus(
             Long id,
@@ -148,7 +143,6 @@ public class TaskService {
 
         Task task = findTaskById(id);
 
-        // Sadece göreve atanan kullanıcı durum değiştirebilir.
         if (currentUserId == null
                 || !currentUserId.equals(task.getAssigneeId())) {
 
@@ -163,7 +157,6 @@ public class TaskService {
         return mapToDto(taskRepository.save(task));
     }
 
-    // Atanacak kullanıcının aktifliğini kontrol etme
     private void checkAssigneeIsActive(UUID assigneeId) {
 
         if (assigneeId != null
@@ -176,11 +169,9 @@ public class TaskService {
         }
     }
 
-    // String değerini TaskStatus enum değerine dönüştürme
     private TaskStatus parseStatus(String status) {
 
         if (status == null || status.isBlank()) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Task status is required"
@@ -190,7 +181,6 @@ public class TaskService {
         try {
             return TaskStatus.valueOf(status.trim());
         } catch (IllegalArgumentException e) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Invalid task status"
@@ -198,11 +188,9 @@ public class TaskService {
         }
     }
 
-    // String değerini TaskPriority enum değerine dönüştürme
     private TaskPriority parsePriority(String priority) {
 
         if (priority == null || priority.isBlank()) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Task priority is required"
@@ -212,7 +200,6 @@ public class TaskService {
         try {
             return TaskPriority.valueOf(priority.trim());
         } catch (IllegalArgumentException e) {
-
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Invalid task priority"
@@ -220,7 +207,6 @@ public class TaskService {
         }
     }
 
-    // ID ile görev bulma
     private Task findTaskById(Long id) {
 
         return taskRepository.findById(id)
@@ -230,7 +216,6 @@ public class TaskService {
                 ));
     }
 
-    // Entity nesnesini Response DTO'ya dönüştürme
     private TaskResponseDto mapToDto(Task task) {
 
         return new TaskResponseDto(

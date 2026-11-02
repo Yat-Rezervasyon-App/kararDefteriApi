@@ -3,7 +3,6 @@ package com.tein.karardefteri.task.controller;
 import com.tein.karardefteri.task.dto.TaskRequestDto;
 import com.tein.karardefteri.task.dto.TaskResponseDto;
 import com.tein.karardefteri.task.service.TaskService;
-
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 
@@ -23,8 +22,6 @@ public class TaskController {
     public TaskController(TaskService taskService) {
         this.taskService = taskService;
     }
-
-    // Görev oluşturma
     @PostMapping("/api/meetings/{meetingId}/tasks")
     public ResponseEntity<TaskResponseDto> createTask(
             @PathVariable UUID meetingId,
@@ -43,9 +40,7 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(createdTask);
     }
-
-    // Toplantıya ait görevleri listeleme
-    @GetMapping("/api/meetings/{meetingId}/tasks")
+  @GetMapping("/api/meetings/{meetingId}/tasks")
     public ResponseEntity<List<TaskResponseDto>> getTasksByMeetingId(
             @PathVariable UUID meetingId,
             HttpSession session) {
@@ -59,7 +54,6 @@ public class TaskController {
         );
     }
 
-    // ID ile görev getirme
     @GetMapping("/api/tasks/{id}")
     public ResponseEntity<TaskResponseDto> getTaskById(
             @PathVariable Long id,
@@ -74,7 +68,6 @@ public class TaskController {
         );
     }
 
-    // Görev bilgilerini güncelleme
     @PutMapping("/api/tasks/{id}")
     public ResponseEntity<TaskResponseDto> updateTask(
             @PathVariable Long id,
@@ -100,7 +93,6 @@ public class TaskController {
         return ResponseEntity.ok(updatedTask);
     }
 
-    // Görev durumunu güncelleme
     @PatchMapping("/api/tasks/{id}/status")
     public ResponseEntity<TaskResponseDto> updateTaskStatus(
             @PathVariable Long id,
@@ -127,7 +119,6 @@ public class TaskController {
         return ResponseEntity.ok(updatedTask);
     }
 
-    // Session üzerinden kullanıcı ID'sini alma
     private UUID getUserId(HttpSession session) {
 
         Object userId = session.getAttribute("userId");
