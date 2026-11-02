@@ -10,6 +10,7 @@ import com.tein.karardefteri.task.entity.TaskPriority;
 import com.tein.karardefteri.task.entity.TaskStatus;
 import com.tein.karardefteri.task.repository.TaskRepository;
 import com.tein.karardefteri.user.service.UserService;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,32 +42,35 @@ public class TaskService {
             UUID meetingId,
             TaskRequestDto requestDto) {
 
+        // Toplantı mevcut mu?
         meetingService.getMeetingById(meetingId);
 
         // Atanacak kullanıcı aktif mi?
-        if (requestDto.assigneeId() != null
-                && !userService.isUserActive(requestDto.assigneeId())) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Assigned user does not exist or is inactive");
-        }
+        checkAssigneeIsActive(requestDto.assigneeId());
 
         Task task = new Task();
 
         task.setMeetingId(meetingId);
-        task.setTitle(requestDto.title());
+        task.setTitle(requestDto.title().trim());
         task.setDescription(requestDto.description());
         task.setAssigneeId(requestDto.assigneeId());
         task.setDueDate(requestDto.dueDate());
 
-        if (requestDto.status() != null
-                && !requestDto.status().isBlank()) {
+        // Varsayılan görev durumu
+        if (requestDto.status() == null
+                || requestDto.status().isBlank()) {
+
+            task.setStatus(TaskStatus.TODO);
+        } else {
             task.setStatus(parseStatus(requestDto.status()));
         }
 
-        if (requestDto.priority() != null
-                && !requestDto.priority().isBlank()) {
+        // Varsayılan öncelik
+        if (requestDto.priority() == null
+                || requestDto.priority().isBlank()) {
+
+            task.setPriority(TaskPriority.MEDIUM);
+        } else {
             task.setPriority(parsePriority(requestDto.priority()));
         }
 
@@ -88,6 +92,7 @@ public class TaskService {
     // ID ile görev getirme
     @Transactional(readOnly = true)
     public TaskResponseDto getTaskById(Long id) {
+
         return mapToDto(findTaskById(id));
     }
 
@@ -102,7 +107,8 @@ public class TaskService {
         Task task = findTaskById(id);
 
         Meeting meeting = meetingService.getMeetingById(
-                task.getMeetingId());
+                task.getMeetingId()
+        );
 
         // Sadece toplantı sahibi veya ADMIN güncelleyebilir.
         if (!isAdmin
@@ -111,33 +117,24 @@ public class TaskService {
 
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "Only the meeting owner or ADMIN can update the task");
+                    "Only the meeting owner or ADMIN can update the task"
+            );
         }
 
-        if (requestDto.priority() == null
-                || requestDto.priority().isBlank()) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Task priority is required");
-        }
-
+        // Öncelik zorunludur.
         TaskPriority priority = parsePriority(requestDto.priority());
 
         // Atanacak kullanıcı aktif mi?
-        if (requestDto.assigneeId() != null
-                && !userService.isUserActive(requestDto.assigneeId())) {
+        checkAssigneeIsActive(requestDto.assigneeId());
 
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Assigned user does not exist or is inactive");
-        }
-
-        task.setTitle(requestDto.title());
+        // Görev bilgilerini güncelle.
+        task.setTitle(requestDto.title().trim());
         task.setDescription(requestDto.description());
         task.setAssigneeId(requestDto.assigneeId());
         task.setDueDate(requestDto.dueDate());
         task.setPriority(priority);
+
+        // meetingId ve status burada değiştirilmez.
 
         return mapToDto(taskRepository.save(task));
     }
@@ -157,7 +154,8 @@ public class TaskService {
 
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "Only the assigned user can update task status");
+                    "Only the assigned user can update task status"
+            );
         }
 
         task.setStatus(parseStatus(status));
@@ -165,21 +163,38 @@ public class TaskService {
         return mapToDto(taskRepository.save(task));
     }
 
+    // Atanacak kullanıcının aktifliğini kontrol etme
+    private void checkAssigneeIsActive(UUID assigneeId) {
+
+        if (assigneeId != null
+                && !userService.isUserActive(assigneeId)) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Assigned user does not exist or is inactive"
+            );
+        }
+    }
+
     // String değerini TaskStatus enum değerine dönüştürme
     private TaskStatus parseStatus(String status) {
 
         if (status == null || status.isBlank()) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Task status is required");
+                    "Task status is required"
+            );
         }
 
         try {
-            return TaskStatus.valueOf(status);
+            return TaskStatus.valueOf(status.trim());
         } catch (IllegalArgumentException e) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Invalid task status");
+                    "Invalid task status"
+            );
         }
     }
 
@@ -187,17 +202,21 @@ public class TaskService {
     private TaskPriority parsePriority(String priority) {
 
         if (priority == null || priority.isBlank()) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Task priority is required");
+                    "Task priority is required"
+            );
         }
 
         try {
-            return TaskPriority.valueOf(priority);
+            return TaskPriority.valueOf(priority.trim());
         } catch (IllegalArgumentException e) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Invalid task priority");
+                    "Invalid task priority"
+            );
         }
     }
 
@@ -207,7 +226,8 @@ public class TaskService {
         return taskRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Task not found"));
+                        "Task not found"
+                ));
     }
 
     // Entity nesnesini Response DTO'ya dönüştürme

@@ -1,11 +1,12 @@
-
 package com.tein.karardefteri.task.controller;
 
 import com.tein.karardefteri.task.dto.TaskRequestDto;
 import com.tein.karardefteri.task.dto.TaskResponseDto;
 import com.tein.karardefteri.task.service.TaskService;
+
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +24,7 @@ public class TaskController {
         this.taskService = taskService;
     }
 
+    // Görev oluşturma
     @PostMapping("/api/meetings/{meetingId}/tasks")
     public ResponseEntity<TaskResponseDto> createTask(
             @PathVariable UUID meetingId,
@@ -42,6 +44,7 @@ public class TaskController {
                 .body(createdTask);
     }
 
+    // Toplantıya ait görevleri listeleme
     @GetMapping("/api/meetings/{meetingId}/tasks")
     public ResponseEntity<List<TaskResponseDto>> getTasksByMeetingId(
             @PathVariable UUID meetingId,
@@ -52,9 +55,11 @@ public class TaskController {
         }
 
         return ResponseEntity.ok(
-                taskService.getTasksByMeetingId(meetingId));
+                taskService.getTasksByMeetingId(meetingId)
+        );
     }
 
+    // ID ile görev getirme
     @GetMapping("/api/tasks/{id}")
     public ResponseEntity<TaskResponseDto> getTaskById(
             @PathVariable Long id,
@@ -64,9 +69,12 @@ public class TaskController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        return ResponseEntity.ok(taskService.getTaskById(id));
+        return ResponseEntity.ok(
+                taskService.getTaskById(id)
+        );
     }
 
+    // Görev bilgilerini güncelleme
     @PutMapping("/api/tasks/{id}")
     public ResponseEntity<TaskResponseDto> updateTask(
             @PathVariable Long id,
@@ -92,6 +100,7 @@ public class TaskController {
         return ResponseEntity.ok(updatedTask);
     }
 
+    // Görev durumunu güncelleme
     @PatchMapping("/api/tasks/{id}/status")
     public ResponseEntity<TaskResponseDto> updateTaskStatus(
             @PathVariable Long id,
@@ -108,16 +117,19 @@ public class TaskController {
                 ? null
                 : request.get("status");
 
-        TaskResponseDto updatedTask = taskService.updateTaskStatus(
-                id,
-                status,
-                userId
-        );
+        TaskResponseDto updatedTask =
+                taskService.updateTaskStatus(
+                        id,
+                        status,
+                        userId
+                );
 
         return ResponseEntity.ok(updatedTask);
     }
 
+    // Session üzerinden kullanıcı ID'sini alma
     private UUID getUserId(HttpSession session) {
+
         Object userId = session.getAttribute("userId");
 
         if (userId instanceof UUID) {
