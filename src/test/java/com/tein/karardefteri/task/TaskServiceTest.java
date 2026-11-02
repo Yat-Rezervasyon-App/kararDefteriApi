@@ -461,4 +461,31 @@ class TaskServiceTest {
 
         verify(taskRepository, never()).save(any(Task.class));
     }
+    @Test
+    void getTasksByMeetingId_shouldAllowReadingWhenMeetingIsArchived() {
+        UUID meetingId = UUID.randomUUID();
+
+        Meeting archivedMeeting = new Meeting();
+        archivedMeeting.setArchived(true);
+        archivedMeeting.setTitle("Arşivlenmiş toplantı");
+        archivedMeeting.setProjectId(UUID.randomUUID());
+
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setTitle("Arşivli toplantının görevi");
+
+        when(meetingService.getMeetingById(meetingId))
+                .thenReturn(archivedMeeting);
+
+        when(taskRepository.findByMeetingId(meetingId))
+                .thenReturn(List.of(task));
+
+        List<TaskResponseDto> result =
+                taskService.getTasksByMeetingId(meetingId);
+
+        assertEquals(1, result.size());
+        assertEquals("Arşivli toplantının görevi", result.get(0).title());
+
+        verify(taskRepository).findByMeetingId(meetingId);
+    }
 }
