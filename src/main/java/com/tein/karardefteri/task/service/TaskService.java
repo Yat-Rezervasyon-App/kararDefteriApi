@@ -54,11 +54,12 @@ public class TaskService {
 
         Task task = new Task();
 
-        task.setMeetingId(meetingId);
-        task.setTitle(requestDto.title());
-        task.setDescription(requestDto.description());
-        task.setAssigneeId(requestDto.assigneeId());
-        task.setDueDate(requestDto.dueDate());
+        if (request.title() == null || request.title().isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Başlık boş olamaz"
+            );
+        }
 
         if (requestDto.status() != null
                 && !requestDto.status().isBlank()) {
@@ -81,7 +82,7 @@ public class TaskService {
 
         return taskRepository.findByMeetingId(meetingId)
                 .stream()
-                .map(this::mapToDto)
+                .map(this::toResponse)
                 .toList();
     }
 
