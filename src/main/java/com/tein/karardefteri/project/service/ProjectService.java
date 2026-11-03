@@ -1,5 +1,7 @@
 package com.tein.karardefteri.project.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import com.tein.karardefteri.project.dto.ProjectRequestDto;
 import com.tein.karardefteri.project.dto.ProjectResponseDto;
 import com.tein.karardefteri.project.entity.Project;
@@ -39,6 +41,13 @@ public class ProjectService {
                 .stream()
                 .map(this::toResponse)
                 .toList();
+    }
+    public Project getProjectById(UUID id) {
+        return projectRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Proje bulunamadı: " + id
+                ));
     }
     private ProjectResponseDto toResponse(Project project){
         return new ProjectResponseDto(

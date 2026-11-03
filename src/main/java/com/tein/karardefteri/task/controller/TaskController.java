@@ -1,4 +1,3 @@
-
 package com.tein.karardefteri.task.controller;
 
 import com.tein.karardefteri.task.dto.TaskRequestDto;
@@ -53,6 +52,20 @@ public class TaskController {
 
         return ResponseEntity.ok(
                 taskService.getTasksByMeetingId(meetingId));
+    }
+
+    // Giriş yapan kullanıcının kendisine atanmış görevlerini getirir.
+    @GetMapping("/api/users/me/tasks")
+    public ResponseEntity<List<TaskResponseDto>> getMyTasks(
+            HttpSession session) {
+
+        UUID userId = getUserId(session);
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        return ResponseEntity.ok(taskService.getMyTasks(userId));
     }
 
     @GetMapping("/api/tasks/{id}")

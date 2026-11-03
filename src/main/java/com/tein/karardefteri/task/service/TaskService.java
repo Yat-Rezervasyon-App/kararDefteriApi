@@ -1,6 +1,7 @@
 
 package com.tein.karardefteri.task.service;
 
+import com.tein.karardefteri.project.service.ProjectService;
 import com.tein.karardefteri.meeting.entity.Meeting;
 import com.tein.karardefteri.meeting.service.MeetingService;
 import com.tein.karardefteri.task.dto.TaskRequestDto;
@@ -24,15 +25,37 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final MeetingService meetingService;
     private final UserService userService;
+    private final ProjectService projectService;
 
     public TaskService(
             TaskRepository taskRepository,
             MeetingService meetingService,
-            UserService userService) {
+            UserService userService,
+            ProjectService projectService) {
 
         this.taskRepository = taskRepository;
         this.meetingService = meetingService;
         this.userService = userService;
+        this.projectService = projectService;
+    }
+
+    // Toplantı ve bağlı projenin arşiv durumunu kontrol etme
+    private void checkTaskParentsAreActive(Meeting meeting) {
+
+        if (meeting.isArchived()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Archived meeting cannot be modified");
+        }
+
+        var project = projectService.getProjectById(
+                meeting.getProjectId());
+
+        if (project.isArchived()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Archived project tasks cannot be modified");
+        }
     }
 
     // Görev oluşturma
@@ -41,7 +64,9 @@ public class TaskService {
             UUID meetingId,
             TaskRequestDto requestDto) {
 
-        meetingService.getMeetingById(meetingId);
+        Meeting meeting = meetingService.getMeetingById(meetingId);
+
+        checkTaskParentsAreActive(meeting);
 
         // Atanacak kullanıcı aktif mi?
         if (requestDto.assigneeId() != null
@@ -57,16 +82,20 @@ public class TaskService {
         task.setMeetingId(meetingId);
         task.setTitle(requestDto.title());
         task.setDescription(requestDto.description());
-        task.setAssigneeId(requestDto.assigneeId());
+        if (requestDto.assigneeId() != null) {
+            task.setAssigneeId(requestDto.assigneeId());
+        }
         task.setDueDate(requestDto.dueDate());
 
         if (requestDto.status() != null
                 && !requestDto.status().isBlank()) {
+
             task.setStatus(parseStatus(requestDto.status()));
         }
 
         if (requestDto.priority() != null
                 && !requestDto.priority().isBlank()) {
+
             task.setPriority(parsePriority(requestDto.priority()));
         }
 
@@ -85,9 +114,20 @@ public class TaskService {
                 .toList();
     }
 
+    // Giriş yapan kullanıcının görevlerini listeleme
+    @Transactional(readOnly = true)
+    public List<TaskResponseDto> getMyTasks(UUID userId) {
+
+        return taskRepository.findByAssigneeId(userId)
+                .stream()
+                .map(this::mapToDto)
+                .toList();
+    }
+
     // ID ile görev getirme
     @Transactional(readOnly = true)
     public TaskResponseDto getTaskById(Long id) {
+
         return mapToDto(findTaskById(id));
     }
 
@@ -104,7 +144,7 @@ public class TaskService {
         Meeting meeting = meetingService.getMeetingById(
                 task.getMeetingId());
 
-        // Sadece toplantı sahibi veya ADMIN güncelleyebilir.
+        // Önce yetki kontrolü yapılır.
         if (!isAdmin
                 && (currentUserId == null
                 || !currentUserId.equals(meeting.getCreatedBy()))) {
@@ -113,6 +153,9 @@ public class TaskService {
                     HttpStatus.FORBIDDEN,
                     "Only the meeting owner or ADMIN can update the task");
         }
+
+        // Yetkiden sonra toplantı ve proje arşiv kontrolü yapılır.
+        checkTaskParentsAreActive(meeting);
 
         if (requestDto.priority() == null
                 || requestDto.priority().isBlank()) {
@@ -124,8 +167,10 @@ public class TaskService {
 
         TaskPriority priority = parsePriority(requestDto.priority());
 
-        // Atanacak kullanıcı aktif mi?
+        // Yeni atanacak kullanıcı aktif mi?
+        // Aynı mevcut atama korunuyorsa tekrar kontrol edilmez.
         if (requestDto.assigneeId() != null
+                && !requestDto.assigneeId().equals(task.getAssigneeId())
                 && !userService.isUserActive(requestDto.assigneeId())) {
 
             throw new ResponseStatusException(
@@ -135,7 +180,9 @@ public class TaskService {
 
         task.setTitle(requestDto.title());
         task.setDescription(requestDto.description());
-        task.setAssigneeId(requestDto.assigneeId());
+        if (requestDto.assigneeId() != null) {
+            task.setAssigneeId(requestDto.assigneeId());
+        }
         task.setDueDate(requestDto.dueDate());
         task.setPriority(priority);
 
@@ -151,7 +198,10 @@ public class TaskService {
 
         Task task = findTaskById(id);
 
-        // Sadece göreve atanan kullanıcı durum değiştirebilir.
+        Meeting meeting = meetingService.getMeetingById(
+                task.getMeetingId());
+
+        // Önce göreve atanmış kullanıcının yetkisi kontrol edilir.
         if (currentUserId == null
                 || !currentUserId.equals(task.getAssigneeId())) {
 
@@ -159,6 +209,9 @@ public class TaskService {
                     HttpStatus.FORBIDDEN,
                     "Only the assigned user can update task status");
         }
+
+        // Yetkiden sonra arşiv kontrolü yapılır.
+        checkTaskParentsAreActive(meeting);
 
         task.setStatus(parseStatus(status));
 
@@ -213,9 +266,18 @@ public class TaskService {
     // Entity nesnesini Response DTO'ya dönüştürme
     private TaskResponseDto mapToDto(Task task) {
 
+        Meeting meeting = meetingService.getMeetingById(
+                task.getMeetingId());
+
+        var project = projectService.getProjectById(
+                meeting.getProjectId());
+
         return new TaskResponseDto(
                 task.getId(),
                 task.getMeetingId(),
+                meeting.getTitle(),
+                project.getId(),
+                project.getName(),
                 task.getTitle(),
                 task.getDescription(),
                 task.getAssigneeId(),

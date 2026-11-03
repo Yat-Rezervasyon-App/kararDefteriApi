@@ -1,3 +1,4 @@
+
 package com.tein.karardefteri.task.dto;
 
 import java.time.Instant;
@@ -7,6 +8,9 @@ import java.util.UUID;
 public record TaskResponseDto(
         Long id,
         UUID meetingId,
+        String meetingTitle,
+        UUID projectId,
+        String projectName,
         String title,
         String description,
         UUID assigneeId,

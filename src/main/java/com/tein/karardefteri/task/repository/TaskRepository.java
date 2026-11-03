@@ -8,5 +8,6 @@ import java.util.UUID;
 
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
+    List<Task> findByAssigneeId(UUID assigneeId);
     List<Task> findByMeetingId(UUID meetingId);
 }
