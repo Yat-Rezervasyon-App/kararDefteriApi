@@ -12,6 +12,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import com.tein.karardefteri.user.repository.UserRepository;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.io.IOException;
 
@@ -34,11 +36,16 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            DaoAuthenticationProvider authenticationProvider
+            DaoAuthenticationProvider authenticationProvider,
+            UserRepository userRepository
     ) throws Exception {
 
         http
                 .authenticationProvider(authenticationProvider)
+                .addFilterBefore(
+                        new ActiveUserSessionFilter(userRepository),
+                        UsernamePasswordAuthenticationFilter.class
+                )
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(
                                 CookieCsrfTokenRepository.withHttpOnlyFalse()
@@ -48,6 +55,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/csrf").permitAll()
                         .requestMatchers("/login", "/logout").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/users")
+                        .hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/users/*/active")
                         .hasRole("ADMIN")
                         .requestMatchers("/api/users/me").authenticated()
                         .requestMatchers("/api/**").authenticated()
