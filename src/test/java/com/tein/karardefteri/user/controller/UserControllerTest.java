@@ -10,6 +10,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.tein.karardefteri.user.repository.UserRepository;
 
 import java.time.Instant;
 import java.util.List;
@@ -27,6 +28,9 @@ class UserControllerTest {
 
     @MockitoBean
     private UserService userService;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     @Test
     void getAllUsers_whenNoUsersExist_returnsEmptyList() throws Exception {

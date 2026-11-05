@@ -1,3 +1,4 @@
+
 package com.tein.karardefteri.task;
 
 import com.tein.karardefteri.meeting.entity.Meeting;
@@ -28,6 +29,14 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class TaskServiceTest {
@@ -109,6 +118,9 @@ class TaskServiceTest {
                 null
         );
 
+        when(meetingService.getMeetingById(meetingId))
+                .thenReturn(new Meeting());
+
         when(taskRepository.save(any(Task.class)))
                 .thenAnswer(invocation -> {
                     Task task = invocation.getArgument(0);
@@ -134,11 +146,16 @@ class TaskServiceTest {
         assertEquals("Test toplantısı", response.meetingTitle());
         assertEquals("Test projesi", response.projectName());
 
+
+        verify(meetingService).getMeetingById(meetingId);
         verify(taskRepository).save(any(Task.class));
     }
 
     @Test
     void getTasksByMeetingId_shouldReturnEmptyList() {
+        when(meetingService.getMeetingById(meetingId))
+                .thenReturn(new Meeting());
+
         when(taskRepository.findByMeetingId(meetingId))
                 .thenReturn(List.of());
 
@@ -174,6 +191,12 @@ class TaskServiceTest {
     @Test
     void getTaskById_shouldReturnTaskWhenFound() {
         Task task = createTask();
+    void getTaskById_shouldReturnTaskWhenFound() {
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setTitle("Test görevi");
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
 
         when(taskRepository.findById(1L))
                 .thenReturn(Optional.of(task));
@@ -201,6 +224,10 @@ class TaskServiceTest {
         );
 
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        assertEquals(
+                HttpStatus.NOT_FOUND,
+                exception.getStatusCode()
+        );
     }
 
     @Test
@@ -211,6 +238,23 @@ class TaskServiceTest {
         Task task = createTask();
 
         TaskRequestDto request = createRequest("Yeni başlık", "HIGH");
+        Meeting meeting = new Meeting();
+        meeting.setCreatedBy(ownerId);
+
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setTitle("Eski başlık");
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
+
+        TaskRequestDto request = new TaskRequestDto(
+                "Yeni başlık",
+                "Yeni açıklama",
+                null,
+                null,
+                null,
+                "HIGH"
+        );
 
         when(taskRepository.findById(1L))
                 .thenReturn(Optional.of(task));
@@ -227,6 +271,12 @@ class TaskServiceTest {
         assertEquals("Yeni başlık", response.title());
         assertEquals("HIGH", response.priority());
 
+        TaskResponseDto response = taskService.updateTask(
+                1L, request, ownerId, false
+        );
+
+        assertEquals("Yeni başlık", response.title());
+        assertEquals("HIGH", response.priority());
         verify(taskRepository).save(task);
     }
 
@@ -238,6 +288,23 @@ class TaskServiceTest {
         Task task = createTask();
 
         TaskRequestDto request = createRequest("Admin güncelledi", "HIGH");
+        Meeting meeting = new Meeting();
+        meeting.setCreatedBy(UUID.randomUUID());
+
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setTitle("Eski başlık");
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
+
+        TaskRequestDto request = new TaskRequestDto(
+                "Admin güncelledi",
+                "Açıklama",
+                null,
+                null,
+                null,
+                "HIGH"
+        );
 
         when(taskRepository.findById(1L))
                 .thenReturn(Optional.of(task));
@@ -254,6 +321,12 @@ class TaskServiceTest {
         assertEquals("Admin güncelledi", response.title());
         assertEquals("HIGH", response.priority());
 
+        TaskResponseDto response = taskService.updateTask(
+                1L, request, adminId, true
+        );
+
+        assertEquals("Admin güncelledi", response.title());
+        assertEquals("HIGH", response.priority());
         verify(taskRepository).save(task);
     }
 
@@ -265,6 +338,23 @@ class TaskServiceTest {
         Task task = createTask();
 
         TaskRequestDto request = createRequest("Yeni başlık", "HIGH");
+        Meeting meeting = new Meeting();
+        meeting.setCreatedBy(UUID.randomUUID());
+
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setTitle("Eski başlık");
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
+
+        TaskRequestDto request = new TaskRequestDto(
+                "Yeni başlık",
+                "Açıklama",
+                null,
+                null,
+                null,
+                "HIGH"
+        );
 
         when(taskRepository.findById(1L))
                 .thenReturn(Optional.of(task));
@@ -278,6 +368,15 @@ class TaskServiceTest {
         );
 
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+                () -> taskService.updateTask(
+                        1L, request, anotherUserId, false
+                )
+        );
+
+        assertEquals(
+                HttpStatus.FORBIDDEN,
+                exception.getStatusCode()
+        );
 
         verify(taskRepository, never()).save(any(Task.class));
     }
@@ -290,6 +389,23 @@ class TaskServiceTest {
         Task task = createTask();
 
         TaskRequestDto request = createRequest("Yeni başlık", " ");
+        Meeting meeting = new Meeting();
+        meeting.setCreatedBy(ownerId);
+
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setTitle("Test görevi");
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
+
+        TaskRequestDto request = new TaskRequestDto(
+                "Yeni başlık",
+                "Açıklama",
+                null,
+                null,
+                null,
+                " "
+        );
 
         when(taskRepository.findById(1L))
                 .thenReturn(Optional.of(task));
@@ -303,6 +419,15 @@ class TaskServiceTest {
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+                () -> taskService.updateTask(
+                        1L, request, ownerId, false
+                )
+        );
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                exception.getStatusCode()
+        );
 
         verify(taskRepository, never()).save(any(Task.class));
     }
@@ -315,6 +440,23 @@ class TaskServiceTest {
         Task task = createTask();
 
         TaskRequestDto request = createRequest("Yeni başlık", "URGENT");
+        Meeting meeting = new Meeting();
+        meeting.setCreatedBy(ownerId);
+
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setTitle("Test görevi");
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
+
+        TaskRequestDto request = new TaskRequestDto(
+                "Yeni başlık",
+                "Açıklama",
+                null,
+                null,
+                null,
+                "URGENT"
+        );
 
         when(taskRepository.findById(1L))
                 .thenReturn(Optional.of(task));
@@ -328,6 +470,15 @@ class TaskServiceTest {
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+                () -> taskService.updateTask(
+                        1L, request, ownerId, false
+                )
+        );
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                exception.getStatusCode()
+        );
 
         verify(taskRepository, never()).save(any(Task.class));
     }
@@ -339,6 +490,11 @@ class TaskServiceTest {
 
         Task task = createTask();
         task.setAssigneeId(assigneeId);
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setAssigneeId(assigneeId);
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
 
         when(taskRepository.findById(1L))
                 .thenReturn(Optional.of(task));
@@ -349,6 +505,17 @@ class TaskServiceTest {
         );
 
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+                () -> taskService.updateTaskStatus(
+                        1L,
+                        "DONE",
+                        anotherUserId
+                )
+        );
+
+        assertEquals(
+                HttpStatus.FORBIDDEN,
+                exception.getStatusCode()
+        );
 
         verify(taskRepository, never()).save(any(Task.class));
     }
@@ -359,6 +526,11 @@ class TaskServiceTest {
 
         Task task = createTask();
         task.setAssigneeId(assigneeId);
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setAssigneeId(assigneeId);
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
 
         when(taskRepository.findById(1L))
                 .thenReturn(Optional.of(task));
@@ -371,6 +543,16 @@ class TaskServiceTest {
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+                        1L,
+                        "INVALID_STATUS",
+                        assigneeId
+                )
+        );
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                exception.getStatusCode()
+        );
 
         verify(taskRepository, never()).save(any(Task.class));
     }
@@ -382,6 +564,14 @@ class TaskServiceTest {
 
         Meeting meeting = createMeeting(ownerId);
         Task task = createTask();
+        Meeting meeting = new Meeting();
+        meeting.setCreatedBy(ownerId);
+
+        Task task = new Task();
+        task.setMeetingId(meetingId);
+        task.setTitle("Test görevi");
+        task.setStatus(TaskStatus.TODO);
+        task.setPriority(TaskPriority.MEDIUM);
 
         TaskRequestDto request = new TaskRequestDto(
                 "Güncellenmiş görev",
@@ -453,6 +643,16 @@ class TaskServiceTest {
         );
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+
+                () -> taskService.updateTask(
+                        1L, request, ownerId, false
+                )
+        );
+
+        assertEquals(
+                HttpStatus.CONFLICT,
+                exception.getStatusCode()
+        );
 
         verify(taskRepository, never()).save(any(Task.class));
     }
@@ -663,5 +863,33 @@ class TaskServiceTest {
 
         assertEquals(existingAssigneeId, task.getAssigneeId());
         assertEquals(existingAssigneeId, response.assigneeId());
+    }
+    void createTask_shouldThrow409WhenAssigneeIsInactive(){
+        UUID inactiveUserId = UUID.randomUUID();
+
+        TaskRequestDto request = new TaskRequestDto(
+                "Test görevi",
+                "Açıklama",
+                inactiveUserId,
+                null,
+                null,
+                null
+        );
+
+        when(meetingService.getMeetingById(meetingId))
+                .thenReturn(new Meeting());
+
+        when(userService.isUserActive(inactiveUserId))
+                .thenReturn(false);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                ()-> taskService.createTask(meetingId, request)
+        );
+        assertEquals(
+                HttpStatus.CONFLICT,
+                exception.getStatusCode()
+        );
+        verify(taskRepository, never()).save(any(Task.class));
     }
 }

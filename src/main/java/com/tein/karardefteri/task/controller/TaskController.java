@@ -7,7 +7,13 @@ import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
@@ -66,6 +72,8 @@ public class TaskController {
         }
 
         return ResponseEntity.ok(taskService.getMyTasks(userId));
+                taskService.getTasksByMeetingId(meetingId)
+        );
     }
 
     @GetMapping("/api/tasks/{id}")
@@ -78,6 +86,9 @@ public class TaskController {
         }
 
         return ResponseEntity.ok(taskService.getTaskById(id));
+        return ResponseEntity.ok(
+                taskService.getTaskById(id)
+        );
     }
 
     @PutMapping("/api/tasks/{id}")
@@ -126,11 +137,18 @@ public class TaskController {
                 status,
                 userId
         );
+        TaskResponseDto updatedTask =
+                taskService.updateTaskStatus(
+                        id,
+                        status,
+                        userId
+                );
 
         return ResponseEntity.ok(updatedTask);
     }
 
     private UUID getUserId(HttpSession session) {
+
         Object userId = session.getAttribute("userId");
 
         if (userId instanceof UUID) {
