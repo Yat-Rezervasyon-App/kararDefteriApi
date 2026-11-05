@@ -90,34 +90,7 @@ public class MeetingController {
         return ResponseEntity.ok(meeting);
     }
 
-    @PutMapping("/{id}/notes")
-    public ResponseEntity<Meeting> updateMeetingNotes(
-            @PathVariable UUID id,
-            @RequestBody Map<String, String> request,
-            HttpSession session) {
 
-        UUID currentUserId = getUserId(session);
-
-        if (currentUserId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        if (request == null || !request.containsKey("notes")) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        boolean isAdmin = "ADMIN".equals(session.getAttribute("role"));
-        String notes = request.get("notes");
-
-        Meeting meeting = meetingService.updateMeetingNotes(
-                id,
-                notes,
-                currentUserId,
-                isAdmin
-        );
-
-        return ResponseEntity.ok(meeting);
-    }
 
     @PatchMapping("/{id}/archive")
     public ResponseEntity<Meeting> archiveMeeting(

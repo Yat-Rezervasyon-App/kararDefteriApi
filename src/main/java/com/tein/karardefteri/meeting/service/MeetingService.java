@@ -34,7 +34,7 @@ public class MeetingService {
                 .orElseThrow(() ->
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
-                                "Toplantı bulunamadı: " + id));
+                                "Toplanti bulunamadi: " + id));
     }
 
     @Transactional
@@ -46,13 +46,13 @@ public class MeetingService {
                 request.getTitle().isBlank()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Toplantı başlığı boş olamaz.");
+                    "Toplanti basligi bos olamaz.");
         }
 
         if (request.getTitle().length() > 200) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Başlık en fazla 200 karakter olabilir.");
+                    "Baslik en fazla 200 karakter olabilir.");
         }
 
         Integer projectExists = jdbcTemplate.queryForObject(
@@ -63,7 +63,7 @@ public class MeetingService {
         if (projectExists == null || projectExists == 0) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
-                    "Belirtilen proje bulunamadı.");
+                    "Belirtilen proje bulunamadi.");
         }
 
         Meeting meeting = new Meeting();
@@ -88,14 +88,21 @@ public class MeetingService {
 
         Meeting meeting = getMeetingById(id);
         checkPermission(meeting, currentUserId, isAdmin);
+        checkNotArchived(meeting);
 
         if (title != null && title.length() > 200) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Başlık en fazla 200 karakter olabilir.");
+                    "Baslik en fazla 200 karakter olabilir.");
         }
 
-        if (title != null && !title.isBlank()) {
+        if (title != null && title.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Toplanti basligi bos olamaz.");
+        }
+
+        if (title != null) {
             meeting.setTitle(title);
         }
 
@@ -112,6 +119,7 @@ public class MeetingService {
 
         Meeting meeting = getMeetingById(id);
         checkPermission(meeting, currentUserId, isAdmin);
+        checkNotArchived(meeting);
 
         meeting.setArchived(true);
 
@@ -170,7 +178,15 @@ public class MeetingService {
                 !meeting.getCreatedBy().equals(currentUserId)) {
             throw new ResponseStatusException(
                     HttpStatus.FORBIDDEN,
-                    "Bu toplantı üzerinde işlem yapma yetkiniz yok.");
+                    "Bu toplanti uzerinde islem yapma yetkiniz yok.");
+        }
+    }
+
+    private void checkNotArchived(Meeting meeting) {
+        if (meeting.isArchived()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Arsivlenmis toplanti degistirilemez.");
         }
     }
 }
