@@ -1,4 +1,3 @@
-
 package com.tein.karardefteri.meeting.controller;
 
 import com.tein.karardefteri.meeting.dto.MeetingCreateRequest;
@@ -12,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -83,6 +83,35 @@ public class MeetingController {
                 id,
                 request.getTitle(),
                 request.getDescription(),
+                currentUserId,
+                isAdmin
+        );
+
+        return ResponseEntity.ok(meeting);
+    }
+
+    @PutMapping("/{id}/notes")
+    public ResponseEntity<Meeting> updateMeetingNotes(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> request,
+            HttpSession session) {
+
+        UUID currentUserId = getUserId(session);
+
+        if (currentUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        if (request == null || !request.containsKey("notes")) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        boolean isAdmin = "ADMIN".equals(session.getAttribute("role"));
+        String notes = request.get("notes");
+
+        Meeting meeting = meetingService.updateMeetingNotes(
+                id,
+                notes,
                 currentUserId,
                 isAdmin
         );

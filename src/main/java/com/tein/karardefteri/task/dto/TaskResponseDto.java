@@ -1,4 +1,3 @@
-
 package com.tein.karardefteri.task.dto;
 
 import java.time.Instant;
