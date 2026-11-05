@@ -30,7 +30,7 @@ public class Meeting {
     @Column(length = 2000)
     private String description;
 
-    @Column(length = 5000)
+    @Column(length = 20000)
     private String notes;
 
     @Column(name = "created_by", nullable = false, updatable = false)
