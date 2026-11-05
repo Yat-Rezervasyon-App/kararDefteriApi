@@ -1,4 +1,3 @@
-
 package com.tein.karardefteri.meeting.service;
 
 import com.tein.karardefteri.meeting.dto.MeetingCreateRequest;
@@ -99,6 +98,7 @@ public class MeetingService {
         if (title != null && !title.isBlank()) {
             meeting.setTitle(title);
         }
+
         meeting.setDescription(description);
 
         return meetingRepository.save(meeting);
@@ -114,6 +114,45 @@ public class MeetingService {
         checkPermission(meeting, currentUserId, isAdmin);
 
         meeting.setArchived(true);
+
+        return meetingRepository.save(meeting);
+    }
+
+    @Transactional
+    public Meeting updateMeetingNotes(
+            UUID id,
+            String notes,
+            UUID currentUserId,
+            boolean isAdmin) {
+
+        Meeting meeting = getMeetingById(id);
+
+        checkPermission(meeting, currentUserId, isAdmin);
+
+        if (meeting.isArchived()) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Arşivlenmiş toplantının notları değiştirilemez.");
+        }
+
+        Boolean projectArchived = jdbcTemplate.queryForObject(
+                "SELECT archived FROM projects WHERE id = ?",
+                Boolean.class,
+                meeting.getProjectId());
+
+        if (Boolean.TRUE.equals(projectArchived)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Arşivlenmiş projenin toplantı notları değiştirilemez.");
+        }
+
+        if (notes != null && notes.length() > 20000) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Notlar en fazla 20000 karakter olabilir.");
+        }
+
+        meeting.setNotes(notes);
 
         return meetingRepository.save(meeting);
     }
