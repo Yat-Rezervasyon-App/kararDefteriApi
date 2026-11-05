@@ -71,4 +71,28 @@ public class UserService {
 
         return UserResponseDTO.from(savedUser);
     }
+
+    public UserResponseDTO updateUserActiveStatus(
+            UUID targetUserId,
+            UUID currentUserId
+    ) {
+        if (targetUserId.equals(currentUserId)) {
+            throw new BusinessRuleViolationException(
+                    "SELF_DEACTIVATION_NOT_ALLOWED",
+                    "Admin kendi hesabını pasifleştiremez."
+            );
+        }
+
+        User user = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "USER_NOT_FOUND",
+                        "Kullanıcı bulunamadı."
+                ));
+
+        user.setActive(!user.isActive());
+
+        User savedUser = userRepository.save(user);
+
+        return UserResponseDTO.from(savedUser);
+    }
 }

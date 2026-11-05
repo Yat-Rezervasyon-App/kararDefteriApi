@@ -12,12 +12,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import com.tein.karardefteri.user.entity.User;
 import com.tein.karardefteri.user.repository.UserRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/users")
@@ -57,5 +60,24 @@ public class UserController {
                         )
                 );
         return UserResponseDTO.from(user);
+    }
+
+    @PatchMapping("/{id}/active")
+    public UserResponseDTO updateUserActiveStatus(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        User currentUser = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() ->
+                    new
+                        org.springframework.web.server.ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                            "Giriş yapan kullanıcı bulunamadı."
+                    )
+                );
+        return userService.updateUserActiveStatus(
+                id,
+                currentUser.getId()
+        );
     }
 }

@@ -466,4 +466,34 @@ class TaskServiceTest {
 
         verify(taskRepository, never()).save(any(Task.class));
     }
+
+    @Test
+    void createTask_shouldThrow409WhenAssigneeIsInactive(){
+        UUID inactiveUserId = UUID.randomUUID();
+
+        TaskRequestDto request = new TaskRequestDto(
+                "Test görevi",
+                "Açıklama",
+                inactiveUserId,
+                null,
+                null,
+                null
+        );
+
+        when(meetingService.getMeetingById(meetingId))
+                .thenReturn(new Meeting());
+
+        when(userService.isUserActive(inactiveUserId))
+                .thenReturn(false);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                ()-> taskService.createTask(meetingId, request)
+        );
+        assertEquals(
+                HttpStatus.CONFLICT,
+                exception.getStatusCode()
+        );
+        verify(taskRepository, never()).save(any(Task.class));
+    }
 }
