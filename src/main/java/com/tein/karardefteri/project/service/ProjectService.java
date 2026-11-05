@@ -1,3 +1,4 @@
+
 package com.tein.karardefteri.project.service;
 
 import com.tein.karardefteri.project.dto.ProjectRequestDto;
@@ -42,7 +43,15 @@ public class ProjectService {
                 .toList();
     }
 
-    // Proje detayını getirir. Arşivlenmiş projeler de okunabilir.
+    // ID ile proje kaydını getirir.
+    // TaskService tarafından da kullanılır.
+    @Transactional(readOnly = true)
+    public Project getProjectById(UUID id) {
+        return getProject(id);
+    }
+
+    // Proje detayını getirir.
+    // Arşivlenmiş projeler de okunabilir.
     @Transactional(readOnly = true)
     public ProjectResponseDto findById(UUID projectId) {
         return toResponse(getProject(projectId));
@@ -120,7 +129,7 @@ public class ProjectService {
         return projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Proje bulunamadı"
+                        "Proje bulunamadı: " + projectId
                 ));
     }
 
