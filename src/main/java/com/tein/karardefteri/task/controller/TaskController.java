@@ -1,15 +1,18 @@
-
 package com.tein.karardefteri.task.controller;
 
 import com.tein.karardefteri.task.dto.TaskRequestDto;
 import com.tein.karardefteri.task.dto.TaskResponseDto;
 import com.tein.karardefteri.task.service.TaskService;
+
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -23,6 +26,7 @@ public class TaskController {
         this.taskService = taskService;
     }
 
+    // Görev oluşturma.
     @PostMapping("/api/meetings/{meetingId}/tasks")
     public ResponseEntity<TaskResponseDto> createTask(
             @PathVariable UUID meetingId,
@@ -42,6 +46,7 @@ public class TaskController {
                 .body(createdTask);
     }
 
+    // Toplantıya ait görevleri listeleme.
     @GetMapping("/api/meetings/{meetingId}/tasks")
     public ResponseEntity<List<TaskResponseDto>> getTasksByMeetingId(
             @PathVariable UUID meetingId,
@@ -56,9 +61,15 @@ public class TaskController {
         );
     }
 
-    // Giriş yapan kullanıcının kendisine atanmış görevlerini getirir.
+    // Giriş yapan kullanıcının görevlerini filtreleyerek ve sayfalayarak getirir.
     @GetMapping("/api/users/me/tasks")
-    public ResponseEntity<List<TaskResponseDto>> getMyTasks(
+    public ResponseEntity<Page<TaskResponseDto>> getMyTasks(
+            @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String priority,
+            @RequestParam(required = false) Boolean overdue,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
             HttpSession session) {
 
         UUID userId = getUserId(session);
@@ -67,9 +78,53 @@ public class TaskController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        return ResponseEntity.ok(taskService.getMyTasks(userId));
+        return ResponseEntity.ok(
+                taskService.getMyTasks(
+                        userId,
+                        projectId,
+                        status,
+                        priority,
+                        overdue,
+                        page,
+                        size
+                )
+        );
     }
 
+    // Tüm görevleri filtreleyerek ve sayfalayarak getirir.
+    @GetMapping("/api/tasks")
+    public ResponseEntity<Page<TaskResponseDto>> getTasks(
+            @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) UUID assigneeId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String priority,
+            @RequestParam(required = false) OffsetDateTime dueFrom,
+            @RequestParam(required = false) OffsetDateTime dueTo,
+            @RequestParam(required = false) Boolean overdue,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpSession session) {
+
+        if (getUserId(session) == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        return ResponseEntity.ok(
+                taskService.getTasks(
+                        projectId,
+                        assigneeId,
+                        status,
+                        priority,
+                        dueFrom,
+                        dueTo,
+                        overdue,
+                        page,
+                        size
+                )
+        );
+    }
+
+    // ID ile görev getirme.
     @GetMapping("/api/tasks/{id}")
     public ResponseEntity<TaskResponseDto> getTaskById(
             @PathVariable Long id,
@@ -82,6 +137,7 @@ public class TaskController {
         return ResponseEntity.ok(taskService.getTaskById(id));
     }
 
+    // Görev içeriğini ve atamasını güncelleme.
     @PutMapping("/api/tasks/{id}")
     public ResponseEntity<TaskResponseDto> updateTask(
             @PathVariable Long id,
@@ -107,6 +163,7 @@ public class TaskController {
         return ResponseEntity.ok(updatedTask);
     }
 
+    // Görev durumunu güncelleme.
     @PatchMapping("/api/tasks/{id}/status")
     public ResponseEntity<TaskResponseDto> updateTaskStatus(
             @PathVariable Long id,
@@ -132,6 +189,7 @@ public class TaskController {
         return ResponseEntity.ok(updatedTask);
     }
 
+    // Session üzerinden kullanıcı ID'sini alır.
     private UUID getUserId(HttpSession session) {
 
         Object userId = session.getAttribute("userId");
