@@ -9,4 +9,5 @@ public interface MeetingRepository extends JpaRepository<Meeting, UUID> {
 
     boolean existsByIdAndCreatedBy(UUID id, UUID createdBy);
 
+    long countByProjectId(UUID projectId);
 }

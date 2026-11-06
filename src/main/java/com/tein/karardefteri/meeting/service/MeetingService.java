@@ -24,6 +24,9 @@ public class MeetingService {
         this.meetingRepository = meetingRepository;
         this.jdbcTemplate = jdbcTemplate;
     }
+    public long countMeetingsByProjectId(UUID projectId) {
+        return meetingRepository.countByProjectId(projectId);
+    }
 
     public List<Meeting> getAllMeetings() {
         return meetingRepository.findAll();

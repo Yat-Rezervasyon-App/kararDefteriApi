@@ -1,6 +1,7 @@
 
 package com.tein.karardefteri.task.service;
 
+import java.time.OffsetDateTime;
 import com.tein.karardefteri.meeting.entity.Meeting;
 import com.tein.karardefteri.meeting.service.MeetingService;
 import com.tein.karardefteri.project.entity.Project;
@@ -318,5 +319,26 @@ public class TaskService {
                 task.getCreatedAt(),
                 task.getUpdatedAt()
         );
+    }
+    public long countOpenTasksByProjectId(UUID projectId) {
+        return taskRepository.countOpenTasksByProjectId(projectId);
+    }
+
+    public long countOverdueTasksByProjectId(
+            UUID projectId,
+            OffsetDateTime now
+    ) {
+        return taskRepository.countOverdueTasksByProjectId(projectId, now);
+    }
+
+    public long countOpenTasksByAssigneeId(UUID assigneeId) {
+        return taskRepository.countOpenTasksByAssigneeId(assigneeId);
+    }
+
+    public long countOverdueTasksByAssigneeId(
+            UUID assigneeId,
+            OffsetDateTime now
+    ) {
+        return taskRepository.countOverdueTasksByAssigneeId(assigneeId, now);
     }
 }

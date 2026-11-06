@@ -38,6 +38,11 @@ public class DecisionService {
         return decisionRepository.findByMeetingId(meetingId);
     }
 
+    // Projeye ait aktif kararları sayar.
+    public long countActiveDecisionsByProjectId(UUID projectId) {
+        return decisionRepository.countActiveDecisionsByProjectId(projectId);
+    }
+
     // Yeni karar oluşturur.
     @Transactional
     public Decision createDecision(
@@ -176,4 +181,3 @@ public class DecisionService {
         }
     }
 }
-
