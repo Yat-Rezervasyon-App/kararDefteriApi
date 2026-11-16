@@ -1,3 +1,4 @@
+
 package com.tein.karardefteri.project.entity;
 
 import jakarta.persistence.Column;

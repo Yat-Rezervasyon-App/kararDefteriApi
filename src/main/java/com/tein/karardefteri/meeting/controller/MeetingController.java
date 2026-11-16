@@ -1,17 +1,20 @@
+
 package com.tein.karardefteri.meeting.controller;
 
 import com.tein.karardefteri.meeting.dto.MeetingCreateRequest;
+import com.tein.karardefteri.meeting.dto.MeetingDetailResponseDto;
 import com.tein.karardefteri.meeting.dto.MeetingUpdateRequest;
 import com.tein.karardefteri.meeting.entity.Meeting;
 import com.tein.karardefteri.meeting.service.MeetingService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Map;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @RestController
@@ -25,18 +28,41 @@ public class MeetingController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Meeting>> getAllMeetings(HttpSession session) {
+    public ResponseEntity<Page<Meeting>> getAllMeetings(
+            @RequestParam(required = false) UUID projectId,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            OffsetDateTime from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            OffsetDateTime to,
+            @RequestParam(defaultValue = "false") Boolean archived,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpSession session) {
+
         UUID currentUserId = getUserId(session);
 
         if (currentUserId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        return ResponseEntity.ok(meetingService.getAllMeetings());
+        return ResponseEntity.ok(
+                meetingService.getMeetings(
+                        projectId,
+                        title,
+                        from,
+                        to,
+                        archived,
+                        page,
+                        size
+                )
+        );
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Meeting> getMeeting(
+    public ResponseEntity<MeetingDetailResponseDto> getMeeting(
             @PathVariable UUID id,
             HttpSession session) {
 
@@ -46,7 +72,9 @@ public class MeetingController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        return ResponseEntity.ok(meetingService.getMeetingById(id));
+        return ResponseEntity.ok(
+                meetingService.getMeetingDetailById(id)
+        );
     }
 
     @PostMapping
@@ -83,35 +111,6 @@ public class MeetingController {
                 id,
                 request.getTitle(),
                 request.getDescription(),
-                currentUserId,
-                isAdmin
-        );
-
-        return ResponseEntity.ok(meeting);
-    }
-
-    @PutMapping("/{id}/notes")
-    public ResponseEntity<Meeting> updateMeetingNotes(
-            @PathVariable UUID id,
-            @RequestBody Map<String, String> request,
-            HttpSession session) {
-
-        UUID currentUserId = getUserId(session);
-
-        if (currentUserId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        if (request == null || !request.containsKey("notes")) {
-            return ResponseEntity.badRequest().build();
-        }
-
-        boolean isAdmin = "ADMIN".equals(session.getAttribute("role"));
-        String notes = request.get("notes");
-
-        Meeting meeting = meetingService.updateMeetingNotes(
-                id,
-                notes,
                 currentUserId,
                 isAdmin
         );

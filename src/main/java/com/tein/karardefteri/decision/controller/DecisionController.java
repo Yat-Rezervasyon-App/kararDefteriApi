@@ -3,14 +3,15 @@ package com.tein.karardefteri.decision.controller;
 import com.tein.karardefteri.decision.dto.DecisionCreateRequest;
 import com.tein.karardefteri.decision.dto.DecisionStatusRequest;
 import com.tein.karardefteri.decision.entity.Decision;
+import com.tein.karardefteri.decision.entity.DecisionStatus;
 import com.tein.karardefteri.decision.service.DecisionService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -22,10 +23,13 @@ public class DecisionController {
         this.decisionService = decisionService;
     }
 
-    // Toplantıya ait kararları listeler.
+    // Toplantıya ait kararları filtreli ve sayfalı listeler.
     @GetMapping("/api/meetings/{meetingId}/decisions")
-    public ResponseEntity<List<Decision>> getDecisions(
+    public ResponseEntity<Page<Decision>> getDecisions(
             @PathVariable UUID meetingId,
+            @RequestParam(required = false) DecisionStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
             HttpSession session) {
 
         UUID currentUserId = getUserId(session);
@@ -35,7 +39,11 @@ public class DecisionController {
         }
 
         return ResponseEntity.ok(
-                decisionService.getDecisionsByMeetingId(meetingId));
+                decisionService.getDecisionsByMeetingId(
+                        meetingId,
+                        status,
+                        page,
+                        size));
     }
 
     // Yeni karar oluşturur.
@@ -139,4 +147,3 @@ public class DecisionController {
         return null;
     }
 }
-
