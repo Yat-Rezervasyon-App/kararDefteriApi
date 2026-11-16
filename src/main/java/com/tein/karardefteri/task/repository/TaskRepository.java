@@ -3,7 +3,8 @@ package com.tein.karardefteri.task.repository;
 import com.tein.karardefteri.task.entity.Task;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-
+import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.Query;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
