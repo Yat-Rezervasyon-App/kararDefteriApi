@@ -3,6 +3,7 @@ package com.tein.karardefteri.meeting.controller;
 
 import com.tein.karardefteri.meeting.dto.MeetingCreateRequest;
 import com.tein.karardefteri.meeting.dto.MeetingDetailResponseDto;
+import com.tein.karardefteri.meeting.dto.MeetingNotesUpdateRequest;
 import com.tein.karardefteri.meeting.dto.MeetingUpdateRequest;
 import com.tein.karardefteri.meeting.entity.Meeting;
 import com.tein.karardefteri.meeting.service.MeetingService;
@@ -50,13 +51,7 @@ public class MeetingController {
 
         return ResponseEntity.ok(
                 meetingService.getMeetings(
-                        projectId,
-                        title,
-                        from,
-                        to,
-                        archived,
-                        page,
-                        size
+                        projectId, title, from, to, archived, page, size
                 )
         );
     }
@@ -118,6 +113,30 @@ public class MeetingController {
         return ResponseEntity.ok(meeting);
     }
 
+    @PatchMapping("/{id}/notes")
+    public ResponseEntity<Meeting> updateMeetingNotes(
+            @PathVariable UUID id,
+            @RequestBody MeetingNotesUpdateRequest request,
+            HttpSession session) {
+
+        UUID currentUserId = getUserId(session);
+
+        if (currentUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        boolean isAdmin = "ADMIN".equals(session.getAttribute("role"));
+
+        Meeting meeting = meetingService.updateMeetingNotes(
+                id,
+                request.getNotes(),
+                currentUserId,
+                isAdmin
+        );
+
+        return ResponseEntity.ok(meeting);
+    }
+
     @PatchMapping("/{id}/archive")
     public ResponseEntity<Meeting> archiveMeeting(
             @PathVariable UUID id,
@@ -132,9 +151,7 @@ public class MeetingController {
         boolean isAdmin = "ADMIN".equals(session.getAttribute("role"));
 
         Meeting meeting = meetingService.archiveMeeting(
-                id,
-                currentUserId,
-                isAdmin
+                id, currentUserId, isAdmin
         );
 
         return ResponseEntity.ok(meeting);
