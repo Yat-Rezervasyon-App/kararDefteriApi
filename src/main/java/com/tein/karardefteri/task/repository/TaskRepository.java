@@ -2,11 +2,13 @@ package com.tein.karardefteri.task.repository;
 
 import com.tein.karardefteri.task.entity.Task;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.List;
 import java.util.UUID;
 
-public interface TaskRepository extends JpaRepository<Task, Long> {
+public interface TaskRepository extends JpaRepository<Task, Long>,
+        JpaSpecificationExecutor<Task> {
 
     List<Task> findByAssigneeId(UUID assigneeId);
 

@@ -1,4 +1,3 @@
-
 package com.tein.karardefteri.task;
 
 import com.tein.karardefteri.meeting.entity.Meeting;
@@ -13,15 +12,23 @@ import com.tein.karardefteri.task.entity.TaskStatus;
 import com.tein.karardefteri.task.repository.TaskRepository;
 import com.tein.karardefteri.task.service.TaskService;
 import com.tein.karardefteri.user.service.UserService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -720,5 +727,99 @@ class TaskServiceTest {
 
         assertEquals(existingAssigneeId, task.getAssigneeId());
         assertEquals(existingAssigneeId, response.assigneeId());
+    }
+
+    // Hafta 4: Filtreleme ve sayfalama testi.
+    @Test
+    void getTasks_shouldApplyFiltersAndPagination() {
+
+        UUID assigneeId = UUID.randomUUID();
+
+        Task task = createTask();
+        task.setAssigneeId(assigneeId);
+
+        OffsetDateTime dueFrom =
+                OffsetDateTime.parse("2026-11-01T00:00:00+03:00");
+
+        OffsetDateTime dueTo =
+                OffsetDateTime.parse("2026-11-30T23:59:59+03:00");
+
+        when(taskRepository.findAll(
+                any(Specification.class),
+                any(Pageable.class)
+        )).thenReturn(new org.springframework.data.domain.PageImpl<>(
+                List.of(task)
+        ));
+
+        var result = taskService.getTasks(
+                projectId,
+                assigneeId,
+                "TODO",
+                "HIGH",
+                dueFrom,
+                dueTo,
+                null,
+                1,
+                5
+        );
+
+        ArgumentCaptor<Pageable> pageableCaptor =
+                ArgumentCaptor.forClass(Pageable.class);
+
+        verify(taskRepository).findAll(
+                any(Specification.class),
+                pageableCaptor.capture()
+        );
+
+        Pageable pageable = pageableCaptor.getValue();
+
+        assertEquals(1, pageable.getPageNumber());
+        assertEquals(5, pageable.getPageSize());
+
+        assertEquals(
+                Sort.Direction.DESC,
+                pageable.getSort().getOrderFor("createdAt").getDirection()
+        );
+
+        assertEquals(
+                Sort.Direction.DESC,
+                pageable.getSort().getOrderFor("id").getDirection()
+        );
+
+        assertEquals(1, result.getContent().size());
+        assertEquals("Test görevi", result.getContent().get(0).title());
+    }
+
+    // Başlangıç tarihi bitiş tarihinden sonra olamaz.
+    @Test
+    void getTasks_shouldThrow400WhenDueFromIsAfterDueTo() {
+
+        OffsetDateTime dueFrom =
+                OffsetDateTime.parse("2026-11-20T00:00:00+03:00");
+
+        OffsetDateTime dueTo =
+                OffsetDateTime.parse("2026-11-10T00:00:00+03:00");
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> taskService.getTasks(
+                        null,
+                        null,
+                        null,
+                        null,
+                        dueFrom,
+                        dueTo,
+                        null,
+                        0,
+                        20
+                )
+        );
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                exception.getStatusCode()
+        );
+
+        verifyNoInteractions(taskRepository);
     }
 }
