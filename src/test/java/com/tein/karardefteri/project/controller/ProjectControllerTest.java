@@ -17,6 +17,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.tein.karardefteri.common.dto.PageResponse;
 
 import java.time.Instant;
 import java.util.List;
@@ -115,25 +116,36 @@ class ProjectControllerTest {
         UUID projectId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
-        when(projectService.findAll()).thenReturn(List.of(
-                new ProjectResponseDto(
-                        projectId,
-                        "Karar Defteri",
-                        "Toplantı kararları",
-                        userId,
-                        false,
-                        Instant.parse("2026-10-26T08:00:00Z"),
-                        Instant.parse("2026-10-26T08:00:00Z")
-                )
-        ));
+        ProjectResponseDto project = new ProjectResponseDto(
+                projectId,
+                "Karar Defteri",
+                "Toplantı kararları",
+                userId,
+                false,
+                Instant.parse("2026-10-26T08:00:00Z"),
+                Instant.parse("2026-10-26T08:00:00Z")
+        );
+
+        when(projectService.findAll(null, false, 0, 10))
+                .thenReturn(new PageResponse<>(
+                        List.of(project),
+                        0,
+                        10,
+                        1,
+                        1
+                ));
 
         mockMvc.perform(get("/api/projects"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Karar Defteri"))
-                .andExpect(jsonPath("$[0].createdBy").value(userId.toString()))
-                .andExpect(jsonPath("$[0].passwordHash").doesNotExist());
-    }
+                .andExpect(jsonPath("$.content[0].name").value("Karar Defteri"))
+                .andExpect(jsonPath("$.content[0].createdBy").value(userId.toString()))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1))
 
+                .andExpect(jsonPath("$.content[0].passwordHash").doesNotExist());
+    }
     @Test
     @WithMockUser(username="test@example.com" , roles = "MEMBER")
     void getProjectByIdReturnsProject() throws Exception{
@@ -521,5 +533,71 @@ class ProjectControllerTest {
                 eq(userId),
                 eq(false)
         );
+    }
+
+    @Test
+    @WithMockUser(username = "test@example.com", roles = "MEMBER")
+    void listProjectsRejectsNegativeSize() throws Exception{
+        mockMvc.perform(get("/api/projects")
+                .param("page", "-1"))
+                .andExpect(status().isBadRequest());}
+
+    @Test
+    @WithMockUser(username = "test@example.com", roles = "MEMBER")
+    void listProjectsRejectsZeroSize() throws Exception{
+        mockMvc.perform(get("/api/projects")
+                .param("size", "0"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username ="test@example.com" , roles = "MEMBER")
+    void listProjectsRejectsSizeAboveMaximum() throws Exception{
+        mockMvc.perform(get("/api/projects")
+                .param("size", "101"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "test@example.com", roles = "MEMBER")
+    void listProjectsPassesFiltersToService() throws Exception {
+        when(projectService.findAll("karar",true,1,5))
+                .thenReturn(new PageResponse<>(
+                        List.of(),
+                        1,
+                        5,
+                        0,
+                        0
+                ));
+
+        mockMvc.perform(get("/api/projects")
+                .param("name" , "karar")
+                .param("archived", "true")
+                .param("page", "1")
+                .param("size", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.size").value(5));
+
+        verify(projectService).findAll("karar" , true , 1, 5);
+    }
+
+    @Test
+    @WithMockUser(username = "test@example.com" , roles = "MEMBER")
+    void listProjectsReturnsEmptyContentWhenNoProjectsExist() throws Exception{
+        when(projectService.findAll(null, false, 0 ,10))
+                .thenReturn(new PageResponse<>(
+                        List.of(),
+                        0,
+                        10,
+                        0,
+                        0
+                ));
+        mockMvc.perform(get("/api/projects"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0));
     }
     }

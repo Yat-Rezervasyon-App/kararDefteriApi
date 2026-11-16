@@ -1,6 +1,7 @@
 
 package com.tein.karardefteri.user.service;
 
+import com.tein.karardefteri.common.dto.PageResponse;
 import com.tein.karardefteri.common.exception.ResourceNotFoundException;
 import com.tein.karardefteri.user.dto.UserResponseDTO;
 import com.tein.karardefteri.common.exception.BusinessRuleViolationException;
@@ -11,12 +12,16 @@ import com.tein.karardefteri.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 
 class UserServiceTest {
 
@@ -118,5 +123,55 @@ class UserServiceTest {
         );
 
         verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    void getAllUsers_returnsPaginatedResult() {
+        User user = new User();
+        user.setFullName("Test Kullanici");
+        user.setEmail("test@example.com");
+        user.setActive(true);
+
+        Page<User> userPage = new PageImpl<>(
+                List.of(user),
+                PageRequest.of(0,10),
+                1
+        );
+
+        when(userRepository.findAll(
+                any(org.springframework.data.jpa.domain.Specification.class),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(userPage);
+
+        PageResponse<UserResponseDTO> result =
+                userService.getAllUsers("test",true,0,10);
+
+        assertEquals(1,result.content().size());
+        assertEquals("test@example.com",result.content().get(0).email());
+        assertEquals(0, result.page());
+        assertEquals(10,result.size());
+        assertEquals(1,result.totalElements());
+        assertEquals(1,result.totalPages());
+
+    }
+
+    @Test
+    void getAllUsers_returnsEmptyPageWhenNoUsersMatch(){
+        Page<User> emptyPage = new PageImpl<>(
+                List.of(),
+                PageRequest.of(0,10),
+                0
+        );
+        when(userRepository.findAll(
+                any(org.springframework.data.jpa.domain.Specification.class),
+                any(org.springframework.data.domain.Pageable.class)
+        )).thenReturn(emptyPage);
+
+        PageResponse<UserResponseDTO> result =
+                userService.getAllUsers("unkown",false,0,10);
+
+        assertTrue(result.content().isEmpty());
+        assertEquals(0,result.totalElements());
+        assertEquals(0,result.totalPages());
     }
 }
