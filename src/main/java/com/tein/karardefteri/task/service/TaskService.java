@@ -1,4 +1,3 @@
-
 package com.tein.karardefteri.task.service;
 
 import java.time.OffsetDateTime;
@@ -12,12 +11,22 @@ import com.tein.karardefteri.task.entity.Task;
 import com.tein.karardefteri.task.entity.TaskPriority;
 import com.tein.karardefteri.task.entity.TaskStatus;
 import com.tein.karardefteri.task.repository.TaskRepository;
+import com.tein.karardefteri.task.repository.TaskSpecification;
 import com.tein.karardefteri.user.service.UserService;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +37,12 @@ public class TaskService {
     private final MeetingService meetingService;
     private final UserService userService;
     private final ProjectService projectService;
+
+    private static final ZoneId TURKEY_ZONE =
+            ZoneId.of("Europe/Istanbul");
+
+    private final Clock clock =
+            Clock.system(TURKEY_ZONE);
 
     public TaskService(
             TaskRepository taskRepository,
@@ -63,7 +78,7 @@ public class TaskService {
         }
     }
 
-    // Görev oluşturma
+    // Görev oluşturma.
     @Transactional
     public TaskResponseDto createTask(
             UUID meetingId,
@@ -105,7 +120,7 @@ public class TaskService {
         return mapToDto(taskRepository.save(task));
     }
 
-    // Toplantıya ait görevleri listeleme
+    // Toplantıya ait görevleri listeleme.
     @Transactional(readOnly = true)
     public List<TaskResponseDto> getTasksByMeetingId(UUID meetingId) {
 
@@ -117,7 +132,8 @@ public class TaskService {
                 .toList();
     }
 
-    // Giriş yapan kullanıcının kendisine atanmış görevlerini listeleme
+    // Eski kullanım: Giriş yapan kullanıcının görevlerini listeler.
+    // Mevcut testler ve diğer olası çağrılar için korunmuştur.
     @Transactional(readOnly = true)
     public List<TaskResponseDto> getMyTasks(UUID userId) {
 
@@ -127,14 +143,135 @@ public class TaskService {
                 .toList();
     }
 
-    // ID ile görev getirme
+    // Tüm görevleri filtreleyerek ve sayfalayarak getirir.
+    @Transactional(readOnly = true)
+    public Page<TaskResponseDto> getTasks(
+            UUID projectId,
+            UUID assigneeId,
+            String status,
+            String priority,
+            OffsetDateTime dueFrom,
+            OffsetDateTime dueTo,
+            Boolean overdue,
+            int page,
+            int size) {
+
+        return searchTasks(
+                projectId,
+                assigneeId,
+                status,
+                priority,
+                dueFrom,
+                dueTo,
+                overdue,
+                null,
+                page,
+                size
+        );
+    }
+
+    // Giriş yapan kullanıcının görevlerini filtreleyerek getirir.
+    @Transactional(readOnly = true)
+    public Page<TaskResponseDto> getMyTasks(
+            UUID userId,
+            UUID projectId,
+            String status,
+            String priority,
+            Boolean overdue,
+            int page,
+            int size) {
+
+        return searchTasks(
+                projectId,
+                null,
+                status,
+                priority,
+                null,
+                null,
+                overdue,
+                userId,
+                page,
+                size
+        );
+    }
+
+    // Ortak filtreleme ve sayfalama işlemi.
+    private Page<TaskResponseDto> searchTasks(
+            UUID projectId,
+            UUID assigneeId,
+            String status,
+            String priority,
+            OffsetDateTime dueFrom,
+            OffsetDateTime dueTo,
+            Boolean overdue,
+            UUID currentUserId,
+            int page,
+            int size) {
+
+        if (page < 0 || size < 1 || size > 100) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid page or size"
+            );
+        }
+
+        if (dueFrom != null && dueTo != null
+                && dueFrom.isAfter(dueTo)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "dueFrom cannot be after dueTo"
+            );
+        }
+
+        TaskStatus taskStatus =
+                status == null || status.isBlank()
+                        ? null
+                        : parseStatus(status);
+
+        TaskPriority taskPriority =
+                priority == null || priority.isBlank()
+                        ? null
+                        : parsePriority(priority);
+
+        OffsetDateTime todayStart = overdue == null
+                ? null
+                : LocalDate.now(clock)
+                .atStartOfDay(TURKEY_ZONE)
+                .toOffsetDateTime();
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(
+                        Sort.Order.desc("createdAt"),
+                        Sort.Order.desc("id")
+                )
+        );
+
+        return taskRepository.findAll(
+                TaskSpecification.withFilters(
+                        projectId,
+                        assigneeId,
+                        taskStatus,
+                        taskPriority,
+                        dueFrom,
+                        dueTo,
+                        overdue,
+                        todayStart,
+                        currentUserId
+                ),
+                pageable
+        ).map(this::mapToDto);
+    }
+
+    // ID ile görev getirme.
     @Transactional(readOnly = true)
     public TaskResponseDto getTaskById(Long id) {
 
         return mapToDto(findTaskById(id));
     }
 
-    // Görev içeriğini ve atamasını güncelleme
+    // Görev içeriğini ve atamasını güncelleme.
     @Transactional
     public TaskResponseDto updateTask(
             Long id,
@@ -197,7 +334,7 @@ public class TaskService {
         return mapToDto(taskRepository.save(task));
     }
 
-    // Görev durumunu güncelleme
+    // Görev durumunu güncelleme.
     @Transactional
     public TaskResponseDto updateTaskStatus(
             Long id,
@@ -319,26 +456,5 @@ public class TaskService {
                 task.getCreatedAt(),
                 task.getUpdatedAt()
         );
-    }
-    public long countOpenTasksByProjectId(UUID projectId) {
-        return taskRepository.countOpenTasksByProjectId(projectId);
-    }
-
-    public long countOverdueTasksByProjectId(
-            UUID projectId,
-            OffsetDateTime now
-    ) {
-        return taskRepository.countOverdueTasksByProjectId(projectId, now);
-    }
-
-    public long countOpenTasksByAssigneeId(UUID assigneeId) {
-        return taskRepository.countOpenTasksByAssigneeId(assigneeId);
-    }
-
-    public long countOverdueTasksByAssigneeId(
-            UUID assigneeId,
-            OffsetDateTime now
-    ) {
-        return taskRepository.countOverdueTasksByAssigneeId(assigneeId, now);
     }
 }
