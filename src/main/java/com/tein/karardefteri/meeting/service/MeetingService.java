@@ -1,14 +1,25 @@
+
 package com.tein.karardefteri.meeting.service;
 
 import com.tein.karardefteri.meeting.dto.MeetingCreateRequest;
+import com.tein.karardefteri.meeting.dto.MeetingDetailResponseDto;
 import com.tein.karardefteri.meeting.entity.Meeting;
 import com.tein.karardefteri.meeting.repository.MeetingRepository;
+import com.tein.karardefteri.meeting.specification.MeetingSpecification;
+import com.tein.karardefteri.project.dto.ProjectResponseDto;
+import com.tein.karardefteri.project.entity.Project;
+import com.tein.karardefteri.project.repository.ProjectRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,16 +28,90 @@ public class MeetingService {
 
     private final MeetingRepository meetingRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final ProjectRepository projectRepository;
 
     public MeetingService(
             MeetingRepository meetingRepository,
-            JdbcTemplate jdbcTemplate) {
+            JdbcTemplate jdbcTemplate,
+            ProjectRepository projectRepository) {
         this.meetingRepository = meetingRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.projectRepository = projectRepository;
     }
 
     public List<Meeting> getAllMeetings() {
         return meetingRepository.findAll();
+    }
+
+    // Projeye ait toplantilarin sayisini getirir.
+    public long countMeetingsByProjectId(UUID projectId) {
+        Long count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM meetings WHERE project_id = ?",
+                Long.class,
+                projectId
+        );
+
+        return count != null ? count : 0L;
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Meeting> getMeetings(
+            UUID projectId,
+            String title,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            Boolean archived,
+            int page,
+            int size) {
+
+        if (projectId != null) {
+            Integer projectExists = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM projects WHERE id = ?",
+                    Integer.class,
+                    projectId
+            );
+
+            if (projectExists == null || projectExists == 0) {
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Belirtilen proje bulunamadi."
+                );
+            }
+        }
+
+        if (from != null && to != null && !from.isBefore(to)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Baslangic tarihi bitis tarihinden once olmalidir."
+            );
+        }
+
+        if (page < 0 || size < 1) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Sayfa numarasi 0 veya daha buyuk, sayfa boyutu 1 veya daha buyuk olmalidir."
+            );
+        }
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(
+                        Sort.Order.desc("meetingAt"),
+                        Sort.Order.desc("id")
+                )
+        );
+
+        return meetingRepository.findAll(
+                MeetingSpecification.filter(
+                        projectId,
+                        title,
+                        from,
+                        to,
+                        archived
+                ),
+                pageable
+        );
     }
 
     public Meeting getMeetingById(UUID id) {
@@ -35,6 +120,44 @@ public class MeetingService {
                         new ResponseStatusException(
                                 HttpStatus.NOT_FOUND,
                                 "Toplanti bulunamadi: " + id));
+    }
+
+    @Transactional(readOnly = true)
+    public MeetingDetailResponseDto getMeetingDetailById(UUID id) {
+
+        Meeting meeting = getMeetingById(id);
+
+        Project project = projectRepository.findById(meeting.getProjectId())
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND,
+                                "Toplantinin bagli oldugu proje bulunamadi."
+                        )
+                );
+
+        ProjectResponseDto projectDto = new ProjectResponseDto(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                project.getCreatedBy(),
+                project.isArchived(),
+                project.getCreatedAt(),
+                project.getUpdatedAt()
+        );
+
+        return new MeetingDetailResponseDto(
+                meeting.getId(),
+                meeting.getProjectId(),
+                meeting.getTitle(),
+                meeting.getMeetingAt(),
+                meeting.getDescription(),
+                meeting.getNotes(),
+                meeting.getCreatedBy(),
+                meeting.isArchived(),
+                meeting.getCreatedAt(),
+                meeting.getUpdatedAt(),
+                projectDto
+        );
     }
 
     @Transactional
@@ -134,13 +257,12 @@ public class MeetingService {
             boolean isAdmin) {
 
         Meeting meeting = getMeetingById(id);
-
         checkPermission(meeting, currentUserId, isAdmin);
 
         if (meeting.isArchived()) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Arşivlenmiş toplantının notları değiştirilemez.");
+                    "Arsivlenmis toplantinin notlari degistirilemez.");
         }
 
         Boolean projectArchived = jdbcTemplate.queryForObject(
@@ -151,7 +273,7 @@ public class MeetingService {
         if (Boolean.TRUE.equals(projectArchived)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Arşivlenmiş projenin toplantı notları değiştirilemez.");
+                    "Arsivlenmis projenin toplantı notlari degistirilemez.");
         }
 
         if (notes != null && notes.length() > 20000) {
