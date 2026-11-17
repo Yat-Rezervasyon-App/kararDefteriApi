@@ -1,4 +1,12 @@
+
 package com.tein.karardefteri.task.service;
+
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.UUID;
 
 import com.tein.karardefteri.meeting.entity.Meeting;
 import com.tein.karardefteri.meeting.service.MeetingService;
@@ -21,13 +29,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.time.Clock;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.util.List;
-import java.util.UUID;
 
 @Service
 public class TaskService {
@@ -191,6 +192,44 @@ public class TaskService {
                 userId,
                 page,
                 size
+        );
+    }
+
+    // Projedeki tamamlanmamış görevlerin sayısını getirir.
+    @Transactional(readOnly = true)
+    public long countOpenTasksByProjectId(UUID projectId) {
+
+        return taskRepository.countOpenTasksByProjectId(projectId);
+    }
+
+    // Projedeki gecikmiş ve tamamlanmamış görevlerin sayısını getirir.
+    @Transactional(readOnly = true)
+    public long countOverdueTasksByProjectId(
+            UUID projectId,
+            OffsetDateTime now) {
+
+        return taskRepository.countOverdueTasksByProjectId(
+                projectId,
+                now
+        );
+    }
+
+    // Kullanıcının tamamlanmamış görevlerinin sayısını getirir.
+    @Transactional(readOnly = true)
+    public long countOpenTasksByAssigneeId(UUID assigneeId) {
+
+        return taskRepository.countOpenTasksByAssigneeId(assigneeId);
+    }
+
+    // Kullanıcının gecikmiş ve tamamlanmamış görevlerinin sayısını getirir.
+    @Transactional(readOnly = true)
+    public long countOverdueTasksByAssigneeId(
+            UUID assigneeId,
+            OffsetDateTime now) {
+
+        return taskRepository.countOverdueTasksByAssigneeId(
+                assigneeId,
+                now
         );
     }
 
