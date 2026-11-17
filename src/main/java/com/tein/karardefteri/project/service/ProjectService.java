@@ -1,7 +1,7 @@
 
 package com.tein.karardefteri.project.service;
 
-import com.tein.karardefteri.common.dto.PageResponse;
+
 import com.tein.karardefteri.project.dto.ProjectRequestDto;
 import com.tein.karardefteri.project.dto.ProjectResponseDto;
 import com.tein.karardefteri.project.entity.Project;
@@ -11,9 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.List;
@@ -46,53 +44,24 @@ public class ProjectService {
 
 
     @Transactional(readOnly = true)
-    public PageResponse<ProjectResponseDto> findAll(
+    public Page<ProjectResponseDto> findAll(
             String name,
             boolean archived,
-            int page,
-            int size
+            Pageable pageable
     ) {
-        Pageable pageable = PageRequest.of(
-                page,
-                size,
-                Sort.by(
-                        Sort.Order.desc("createdAt"),
-                        Sort.Order.desc("id")
-                )
-        );
-
-        Specification<Project> specification = (root, query, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-
-            predicates.add(
-                    criteriaBuilder.equal(root.get("archived"), archived)
-            );
-
-            if (name != null && !name.isBlank()) {
-                predicates.add(
-                        criteriaBuilder.like(
-                                criteriaBuilder.lower(root.get("name")),
+        Specification<Project> specification = (root, query, cb) ->
+                cb.and(
+                        cb.equal(root.get("archived"), archived),
+                        (name == null || name.isBlank())
+                                ? cb.conjunction()
+                                : cb.like(
+                                cb.lower(root.get("name")),
                                 "%" + name.trim().toLowerCase(Locale.ROOT) + "%"
                         )
                 );
-            }
 
-            return criteriaBuilder.and(
-                    predicates.toArray(new Predicate[0])
-            );
-        };
-
-        Page<ProjectResponseDto> result = projectRepository
-                .findAll(specification, pageable)
+        return projectRepository.findAll(specification, pageable)
                 .map(this::toResponse);
-
-        return new PageResponse<>(
-                result.getContent(),
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages()
-        );
     }
 
 

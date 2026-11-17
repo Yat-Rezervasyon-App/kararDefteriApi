@@ -4,7 +4,6 @@ package com.tein.karardefteri.project.controller;
 import com.tein.karardefteri.project.dto.ProjectRequestDto;
 import com.tein.karardefteri.project.dto.ProjectResponseDto;
 import com.tein.karardefteri.project.service.ProjectService;
-import com.tein.karardefteri.common.dto.PageResponse;
 import com.tein.karardefteri.common.exception.InvalidRequestException;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -13,6 +12,10 @@ import com.tein.karardefteri.user.dto.UserResponseDTO;
 import com.tein.karardefteri.user.entity.UserRole;
 import com.tein.karardefteri.user.service.UserService;
 import org.springframework.security.core.Authentication;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Sort;
 
 import java.util.UUID;
 
@@ -44,25 +47,25 @@ public class ProjectController {
     }
 
     @GetMapping
-    public PageResponse<ProjectResponseDto> findAll(
+    public Page<ProjectResponseDto> findAll(
             @RequestParam(required = false) String name,
             @RequestParam(defaultValue = "false") boolean archived,
+            @PageableDefault(
+                    size = 10,
+                    sort = {"createdAt", "id"},
+                    direction = Sort.Direction.DESC
+            ) Pageable pageable,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        if(page < 0) {
+        if (page < 0 || size < 1 || size > 100) {
             throw new InvalidRequestException(
-                    "INVALID_PAGE",
-                    "Sayfa numarası 0 veya daha büyük olmalıdır"
+                    "INVALID_PAGINATION",
+                    "Sayfa numarası 0 veya daha büyük, sayfa boyutu 1 ile 100 arasında olmalıdır"
             );
         }
-        if ( size < 1 || size > 100){
-            throw new InvalidRequestException(
-                        "INVALID_SIZE",
-                        "Sayfa boyutu 1 ile 100 arasında olmalıdır"
-            );
-        }
-        return projectService.findAll(name, archived, page, size);
+
+        return projectService.findAll(name, archived, pageable);
     }
 
     @GetMapping("/{id}")

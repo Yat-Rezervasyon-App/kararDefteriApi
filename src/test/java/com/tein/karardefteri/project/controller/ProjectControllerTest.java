@@ -17,12 +17,16 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import com.tein.karardefteri.common.dto.PageResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -126,20 +130,21 @@ class ProjectControllerTest {
                 Instant.parse("2026-10-26T08:00:00Z")
         );
 
-        when(projectService.findAll(null, false, 0, 10))
-                .thenReturn(new PageResponse<>(
-                        List.of(project),
-                        0,
-                        10,
-                        1,
-                        1
-                ));
+        when(projectService.findAll(
+                isNull(),
+                eq(false),
+                any(Pageable.class)
+        )).thenReturn(new PageImpl<>(
+                List.of(project),
+                PageRequest.of(0, 10),
+                1
+        ));
 
         mockMvc.perform(get("/api/projects"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].name").value("Karar Defteri"))
                 .andExpect(jsonPath("$.content[0].createdBy").value(userId.toString()))
-                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.number").value(0))
                 .andExpect(jsonPath("$.size").value(10))
                 .andExpect(jsonPath("$.totalElements").value(1))
                 .andExpect(jsonPath("$.totalPages").value(1))
@@ -561,14 +566,15 @@ class ProjectControllerTest {
     @Test
     @WithMockUser(username = "test@example.com", roles = "MEMBER")
     void listProjectsPassesFiltersToService() throws Exception {
-        when(projectService.findAll("karar",true,1,5))
-                .thenReturn(new PageResponse<>(
+        when(projectService.findAll(
+                eq("karar"),
+                eq(true),
+                any(Pageable.class)
+                )).thenReturn(new PageImpl<>(
                         List.of(),
-                        1,
-                        5,
-                        0,
-                        0
-                ));
+                        PageRequest.of(1,5),
+                0
+        ));
 
         mockMvc.perform(get("/api/projects")
                 .param("name" , "karar")
@@ -577,23 +583,29 @@ class ProjectControllerTest {
                 .param("size", "5"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isEmpty())
-                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.number").value(1))
                 .andExpect(jsonPath("$.size").value(5));
 
-        verify(projectService).findAll("karar" , true , 1, 5);
+        verify(projectService).findAll(
+                eq("karar"),
+                eq(true),
+                any(Pageable.class)
+        );
     }
 
     @Test
     @WithMockUser(username = "test@example.com" , roles = "MEMBER")
     void listProjectsReturnsEmptyContentWhenNoProjectsExist() throws Exception{
-        when(projectService.findAll(null, false, 0 ,10))
-                .thenReturn(new PageResponse<>(
+        when(projectService.findAll(
+                isNull(),
+                eq(false),
+                any(Pageable.class)
+                )).thenReturn(new PageImpl<>(
                         List.of(),
-                        0,
-                        10,
-                        0,
-                        0
-                ));
+                PageRequest.of(0,10),
+                0
+        ));
+
         mockMvc.perform(get("/api/projects"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isEmpty())
