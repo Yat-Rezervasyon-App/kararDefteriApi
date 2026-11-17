@@ -1,9 +1,7 @@
 
 package com.tein.karardefteri.user.service;
 
-import com.tein.karardefteri.common.dto.PageResponse;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import com.tein.karardefteri.common.exception.BusinessRuleViolationException;
@@ -35,13 +33,11 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public PageResponse<UserResponseDTO> getAllUsers(
+    public Page<UserResponseDTO> getAllUsers(
             String q,
             Boolean active,
-            int page,
-            int size
+            Pageable pageable
     ) {
-        Pageable pageable = PageRequest.of(page, size);
 
         Specification<User> specification = (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -72,17 +68,8 @@ public class UserService {
             );
         };
 
-        Page<UserResponseDTO> result = userRepository
-                .findAll(specification, pageable)
+        return userRepository.findAll(specification, pageable)
                 .map(UserResponseDTO::from);
-
-        return new PageResponse<>(
-                result.getContent(),
-                result.getNumber(),
-                result.getSize(),
-                result.getTotalElements(),
-                result.getTotalPages()
-        );
     }
 
     public UserResponseDTO getCurrentUser(String email) {

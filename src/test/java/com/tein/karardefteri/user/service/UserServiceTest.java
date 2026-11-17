@@ -1,7 +1,6 @@
 
 package com.tein.karardefteri.user.service;
 
-import com.tein.karardefteri.common.dto.PageResponse;
 import com.tein.karardefteri.common.exception.ResourceNotFoundException;
 import com.tein.karardefteri.user.dto.UserResponseDTO;
 import com.tein.karardefteri.common.exception.BusinessRuleViolationException;
@@ -143,16 +142,15 @@ class UserServiceTest {
                 any(org.springframework.data.domain.Pageable.class)
         )).thenReturn(userPage);
 
-        PageResponse<UserResponseDTO> result =
-                userService.getAllUsers("test",true,0,10);
+        Page<UserResponseDTO> result =
+                userService.getAllUsers("test", true, PageRequest.of(0, 10));
 
-        assertEquals(1,result.content().size());
-        assertEquals("test@example.com",result.content().get(0).email());
-        assertEquals(0, result.page());
-        assertEquals(10,result.size());
-        assertEquals(1,result.totalElements());
-        assertEquals(1,result.totalPages());
-
+        assertEquals(1, result.getContent().size());
+        assertEquals("test@example.com", result.getContent().get(0).email());
+        assertEquals(0, result.getNumber());
+        assertEquals(10, result.getSize());
+        assertEquals(1, result.getTotalElements());
+        assertEquals(1, result.getTotalPages());
     }
 
     @Test
@@ -167,11 +165,11 @@ class UserServiceTest {
                 any(org.springframework.data.domain.Pageable.class)
         )).thenReturn(emptyPage);
 
-        PageResponse<UserResponseDTO> result =
-                userService.getAllUsers("unkown",false,0,10);
+        Page<UserResponseDTO> result =
+                userService.getAllUsers("unkown", false, PageRequest.of(0, 10));
 
-        assertTrue(result.content().isEmpty());
-        assertEquals(0,result.totalElements());
-        assertEquals(0,result.totalPages());
+        assertTrue(result.getContent().isEmpty());
+        assertEquals(0, result.getTotalElements());
+        assertEquals(0, result.getTotalPages());
     }
 }
