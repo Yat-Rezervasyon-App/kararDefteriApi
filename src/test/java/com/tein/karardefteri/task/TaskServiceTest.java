@@ -1,5 +1,6 @@
 package com.tein.karardefteri.task;
 
+import java.time.OffsetDateTime;
 import com.tein.karardefteri.meeting.entity.Meeting;
 import com.tein.karardefteri.meeting.service.MeetingService;
 import com.tein.karardefteri.project.entity.Project;
@@ -137,6 +138,34 @@ class TaskServiceTest {
         assertTrue(result.isEmpty());
 
         verify(taskRepository).findByMeetingId(meetingId);
+    }
+    @Test
+    void countOpenTasksByAssigneeId_shouldReturnCount() {
+        UUID assigneeId = UUID.randomUUID();
+
+        when(taskRepository.countOpenTasksByAssigneeId(assigneeId))
+                .thenReturn(3L);
+
+        long result = taskService.countOpenTasksByAssigneeId(assigneeId);
+
+        assertEquals(3L, result);
+
+        verify(taskRepository).countOpenTasksByAssigneeId(assigneeId);
+    }
+
+    @Test
+    void countOverdueTasksByAssigneeId_shouldReturnCount() {
+        UUID assigneeId = UUID.randomUUID();
+        OffsetDateTime now = OffsetDateTime.parse("2026-11-05T12:00:00+03:00");
+
+        when(taskRepository.countOverdueTasksByAssigneeId(assigneeId, now))
+                .thenReturn(2L);
+
+        long result = taskService.countOverdueTasksByAssigneeId(assigneeId, now);
+
+        assertEquals(2L, result);
+
+        verify(taskRepository).countOverdueTasksByAssigneeId(assigneeId, now);
     }
 
     @Test
