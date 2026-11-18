@@ -2,10 +2,12 @@ package com.tein.karardefteri.project.repository;
 
 import com.tein.karardefteri.project.entity.Project;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.UUID;
 
-public interface ProjectRepository extends JpaRepository<Project, UUID> {
+public interface ProjectRepository extends JpaRepository<Project, UUID> ,
+        JpaSpecificationExecutor<Project> {
 
     boolean existsByIdAndCreatedBy(UUID projectId, UUID userId);
 

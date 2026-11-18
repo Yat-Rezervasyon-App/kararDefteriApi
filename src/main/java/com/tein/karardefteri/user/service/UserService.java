@@ -1,6 +1,9 @@
 
 package com.tein.karardefteri.user.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import com.tein.karardefteri.common.exception.BusinessRuleViolationException;
 import com.tein.karardefteri.user.dto.UserRequestDTO;
 import com.tein.karardefteri.user.dto.UserResponseDTO;
@@ -10,6 +13,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.tein.karardefteri.common.exception.ResourceNotFoundException;
 
+import jakarta.persistence.criteria.Predicate;
+import java.util.ArrayList;
+import java.util.Locale;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,11 +33,43 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public List<UserResponseDTO> getAllUsers() {
-        return userRepository.findAll()
-                .stream()
-                .map(UserResponseDTO::from)
-                .toList();
+    public Page<UserResponseDTO> getAllUsers(
+            String q,
+            Boolean active,
+            Pageable pageable
+    ) {
+
+        Specification<User> specification = (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            if (q != null && !q.isBlank()) {
+                String search = "%" + q.trim().toLowerCase(Locale.ROOT) + "%";
+
+                predicates.add(
+                        criteriaBuilder.or(
+                                criteriaBuilder.like(
+                                        criteriaBuilder.lower(root.get("fullName")),
+                                        search
+                                ),
+                                criteriaBuilder.like(
+                                        criteriaBuilder.lower(root.get("email")),
+                                        search
+                                )
+                        )
+                );
+            }
+            if (active != null) {
+                predicates.add(
+                        criteriaBuilder.equal(root.get("active"), active)
+                );
+            }
+            return criteriaBuilder.and(
+                    predicates.toArray(new Predicate[0])
+            );
+        };
+
+        return userRepository.findAll(specification, pageable)
+                .map(UserResponseDTO::from);
     }
 
     public UserResponseDTO getCurrentUser(String email) {

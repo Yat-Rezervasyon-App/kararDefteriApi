@@ -1,6 +1,7 @@
 
 package com.tein.karardefteri.project.service;
 
+
 import com.tein.karardefteri.project.dto.ProjectRequestDto;
 import com.tein.karardefteri.project.dto.ProjectResponseDto;
 import com.tein.karardefteri.project.entity.Project;
@@ -9,9 +10,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.Locale;
+import jakarta.persistence.criteria.Predicate;
 
 @Service
 public class ProjectService {
@@ -35,14 +42,30 @@ public class ProjectService {
         return toResponse(savedProject);
     }
 
+
     @Transactional(readOnly = true)
-    public List<ProjectResponseDto> findAll() {
-        return projectRepository.findAll()
-                .stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<ProjectResponseDto> findAll(
+            String name,
+            boolean archived,
+            Pageable pageable
+    ) {
+        Specification<Project> specification = (root, query, cb) ->
+                cb.and(
+                        cb.equal(root.get("archived"), archived),
+                        (name == null || name.isBlank())
+                                ? cb.conjunction()
+                                : cb.like(
+                                cb.lower(root.get("name")),
+                                "%" + name.trim().toLowerCase(Locale.ROOT) + "%"
+                        )
+                );
+
+        return projectRepository.findAll(specification, pageable)
+                .map(this::toResponse);
     }
 
+
+    // Proje detayını getirir. Arşivlenmiş projeler de okunabilir.
     // ID ile proje kaydını getirir.
     // TaskService tarafından da kullanılır.
     @Transactional(readOnly = true)
