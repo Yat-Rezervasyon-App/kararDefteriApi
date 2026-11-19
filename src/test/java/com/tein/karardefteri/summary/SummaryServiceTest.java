@@ -11,11 +11,15 @@ import com.tein.karardefteri.summary.service.SummaryService;
 import com.tein.karardefteri.task.service.TaskService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import org.junit.jupiter.api.BeforeEach;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 
 import java.util.UUID;
 
@@ -36,10 +40,21 @@ class SummaryServiceTest {
 
     @Mock
     private TaskService taskService;
-
-    @InjectMocks
     private SummaryService summaryService;
 
+    @BeforeEach
+    void setUp() {
+        summaryService = new SummaryService(
+                projectService,
+                meetingService,
+                decisionService,
+                taskService,
+                Clock.fixed(
+                        Instant.parse("2026-11-18T09:00:00Z"),
+                        ZoneId.of("Europe/Istanbul")
+                )
+        );
+    }
     @Test
     void getProjectSummary_owner_shouldReturnCounts() {
         UUID projectId = UUID.randomUUID();
