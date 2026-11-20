@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -351,4 +352,76 @@ class MeetingServiceTest {
     }
 
 
+    @Test
+    void archivedProjectCannotCreateMeeting() {
+        MeetingCreateRequest request = new MeetingCreateRequest();
+        request.setProjectId(projectId);
+        request.setTitle("Yeni Toplantı");
+
+        when(jdbcTemplate.queryForObject(
+                anyString(),
+                eq(Integer.class),
+                eq(projectId)
+        )).thenReturn(1);
+
+        when(jdbcTemplate.queryForObject(
+                contains("SELECT archived"),
+                eq(Boolean.class),
+                eq(projectId)
+        )).thenReturn(true);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                ()-> meetingService.createMeeting(request, ownerId)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verify(meetingRepository, never()).save(any());
+    }
+
+    @Test
+    void archivedProjectCannotUpdateMeeting() {
+        when(jdbcTemplate.queryForObject(
+                contains("SELECT archived"),
+                eq(Boolean.class),
+                eq(projectId)
+        )).thenReturn(true);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                ()-> meetingService.updateMeeting(
+                        meetingId,
+                        "Yeni Başlık",
+                        "Açıklama",
+                        ownerId,
+                        false
+                )
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+
+        verify(meetingRepository, never()).save(any());
+    }
+
+    @Test
+    void archivedProjectCannotArchiveMeeting() {
+        when(jdbcTemplate.queryForObject(
+                contains("SELECT archived"),
+                eq(Boolean.class),
+                eq(projectId)
+        )).thenReturn(true);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                ()-> meetingService.archiveMeeting(
+                        meetingId,
+                        ownerId,
+                        false
+                )
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+
+        verify(meetingRepository, never()).save(any());
+    }
 }

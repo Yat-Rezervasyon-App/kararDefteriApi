@@ -189,6 +189,8 @@ public class MeetingService {
                     "Belirtilen proje bulunamadi.");
         }
 
+        checkProjectNotArchived(request.getProjectId());
+
         Meeting meeting = new Meeting();
         meeting.setProjectId(request.getProjectId());
         meeting.setTitle(request.getTitle());
@@ -212,6 +214,8 @@ public class MeetingService {
         Meeting meeting = getMeetingById(id);
         checkPermission(meeting, currentUserId, isAdmin);
         checkNotArchived(meeting);
+
+        checkProjectNotArchived(meeting.getProjectId());
 
         if (title != null && title.length() > 200) {
             throw new ResponseStatusException(
@@ -244,6 +248,8 @@ public class MeetingService {
         checkPermission(meeting, currentUserId, isAdmin);
         checkNotArchived(meeting);
 
+        checkProjectNotArchived(meeting.getProjectId());
+
         meeting.setArchived(true);
 
         return meetingRepository.save(meeting);
@@ -265,16 +271,7 @@ public class MeetingService {
                     "Arsivlenmis toplantinin notlari degistirilemez.");
         }
 
-        Boolean projectArchived = jdbcTemplate.queryForObject(
-                "SELECT archived FROM projects WHERE id = ?",
-                Boolean.class,
-                meeting.getProjectId());
-
-        if (Boolean.TRUE.equals(projectArchived)) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Arsivlenmis projenin toplantı notlari degistirilemez.");
-        }
+        checkProjectNotArchived(meeting.getProjectId());
 
         if (notes != null && notes.length() > 20000) {
             throw new ResponseStatusException(
@@ -309,6 +306,21 @@ public class MeetingService {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Arsivlenmis toplanti degistirilemez.");
+        }
+    }
+
+    private void checkProjectNotArchived(UUID projectId) {
+        Boolean projectArchived = jdbcTemplate.queryForObject(
+                "SELECT archived FROM projects WHERE id = ?",
+                Boolean.class,
+                projectId
+        );
+
+        if (Boolean.TRUE.equals(projectArchived)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Arsivlenmis projenin toplantilari degistirilemez."
+            );
         }
     }
 }
