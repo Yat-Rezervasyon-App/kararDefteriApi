@@ -1,7 +1,8 @@
-
 package com.tein.karardefteri.common.configuration;
 
+import com.tein.karardefteri.user.repository.UserRepository;
 import com.tein.karardefteri.user.service.CustomUserDetailsService;
+
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.context.annotation.Bean;
@@ -11,15 +12,13 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import com.tein.karardefteri.user.repository.UserRepository;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import java.io.IOException;
 
 @Configuration
 public class SecurityConfig {
-
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider(
@@ -52,25 +51,45 @@ public class SecurityConfig {
                         )
                 )
                 .authorizeHttpRequests(auth -> auth
+
+                        // Swagger erişim izinleri
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**"
+                        ).permitAll()
+
                         .requestMatchers("/api/auth/csrf").permitAll()
                         .requestMatchers("/login", "/logout").permitAll()
+
                         .requestMatchers(HttpMethod.POST, "/api/users")
                         .hasRole("ADMIN")
+
                         .requestMatchers(HttpMethod.PATCH, "/api/users/*/active")
                         .hasRole("ADMIN")
+
                         .requestMatchers("/api/users/me").authenticated()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()
                 )
                 .formLogin(form -> form
                         .usernameParameter("email")
-                        .successHandler((request, response, authentication) ->
-                                writeJson(
-                                        response,
-                                        HttpServletResponse.SC_OK,
-                                        "{\"message\":\"Giriş başarılı\"}"
-                                )
-                        )
+                        .successHandler((request, response, authentication) -> {
+                            String email = authentication.getName();
+                            userRepository.findByEmail(email).ifPresent(user -> {
+                                var session = request.getSession(true);
+                                session.setAttribute("userId", user.getId());
+                                if (user.getRole() != null) {
+                                    session.setAttribute("role", user.getRole().name());
+                                }
+                            });
+
+                            writeJson(
+                                    response,
+                                    HttpServletResponse.SC_OK,
+                                    "{\"message\":\"Giriş başarılı\"}"
+                            );
+                        })
                         .failureHandler((request, response, exception) ->
                                 writeJson(
                                         response,
