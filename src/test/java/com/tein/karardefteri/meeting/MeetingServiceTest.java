@@ -167,6 +167,13 @@ class MeetingServiceTest {
         when(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), any()))
                 .thenReturn(1);
 
+        when(jdbcTemplate.queryForObject(
+                contains("created_by"),
+                eq(Boolean.class),
+                eq(projectId),
+                eq(ownerId)
+        )).thenReturn(true);
+
         when(meetingRepository.save(any(Meeting.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -190,6 +197,34 @@ class MeetingServiceTest {
         assertThrows(ResponseStatusException.class, () ->
                 meetingService.createMeeting(request, ownerId));
 
+        verify(meetingRepository, never()).save(any());
+    }
+
+    @Test
+    void createMeetingWithAnotherUsersProjectReturns403() {
+        MeetingCreateRequest request = new MeetingCreateRequest();
+        request.setProjectId(projectId);
+        request.setTitle("Yeni Toplantı");
+
+        when(jdbcTemplate.queryForObject(
+                anyString(),
+                eq(Integer.class),
+                any()
+        )).thenReturn(1);
+
+        when(jdbcTemplate.queryForObject(
+                contains("created_by"),
+                eq(Boolean.class),
+                eq(projectId),
+                eq(ownerId)
+        )).thenReturn(false);
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                ()-> meetingService.createMeeting(request, ownerId)
+        );
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
         verify(meetingRepository, never()).save(any());
     }
 
@@ -363,6 +398,13 @@ class MeetingServiceTest {
                 eq(Integer.class),
                 eq(projectId)
         )).thenReturn(1);
+
+        when(jdbcTemplate.queryForObject(
+                contains("created_by"),
+                eq(Boolean.class),
+                eq(projectId),
+                eq(ownerId)
+        )).thenReturn(true);
 
         when(jdbcTemplate.queryForObject(
                 contains("SELECT archived"),

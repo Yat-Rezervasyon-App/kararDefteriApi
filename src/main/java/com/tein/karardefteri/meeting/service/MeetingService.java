@@ -189,6 +189,20 @@ public class MeetingService {
                     "Belirtilen proje bulunamadi.");
         }
 
+        boolean isProjectOwner = jdbcTemplate.queryForObject(
+                "SELECT EXISTS (SELECT 1 FROM projects WHERE id = ? AND created_by = ?)",
+                Boolean.class,
+                request.getProjectId(),
+                createdBy
+        );
+
+        if (!Boolean.TRUE.equals(isProjectOwner)){
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Bu projeye toplantı oluşturma yetkiniz yok."
+            );
+        }
+
         checkProjectNotArchived(request.getProjectId());
 
         Meeting meeting = new Meeting();

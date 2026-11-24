@@ -34,13 +34,14 @@ public class TaskController {
             HttpSession session) {
 
         UUID userId = getUserId(session);
+        boolean isAdmin = "ADMIN".equals(session.getAttribute("role"));
 
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
         TaskResponseDto createdTask =
-                taskService.createTask(meetingId, requestDto);
+                taskService.createTask(meetingId, requestDto, userId, isAdmin);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(createdTask);
@@ -52,12 +53,16 @@ public class TaskController {
             @PathVariable UUID meetingId,
             HttpSession session) {
 
-        if (getUserId(session) == null) {
+        UUID userId = getUserId(session);
+
+        if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
+        boolean isAdmin = "ADMIN".equals(session.getAttribute("role"));
+
         return ResponseEntity.ok(
-                taskService.getTasksByMeetingId(meetingId)
+                taskService.getTasksByMeetingId(meetingId, userId, isAdmin)
         );
     }
 
@@ -105,9 +110,13 @@ public class TaskController {
             @RequestParam(defaultValue = "20") int size,
             HttpSession session) {
 
-        if (getUserId(session) == null) {
+        UUID userId = getUserId(session);
+
+        if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+
+        boolean isAdmin = "ADMIN".equals(session.getAttribute("role"));
 
         return ResponseEntity.ok(
                 taskService.getTasks(
@@ -119,7 +128,9 @@ public class TaskController {
                         dueTo,
                         overdue,
                         page,
-                        size
+                        size,
+                        userId,
+                        isAdmin
                 )
         );
     }
@@ -130,11 +141,17 @@ public class TaskController {
             @PathVariable Long id,
             HttpSession session) {
 
-        if (getUserId(session) == null) {
+        UUID userId = getUserId(session);
+
+        if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        return ResponseEntity.ok(taskService.getTaskById(id));
+        boolean isAdmin = "ADMIN".equals(session.getAttribute("role"));
+
+        return ResponseEntity.ok(
+                taskService.getTaskById(id, userId, isAdmin)
+        );
     }
 
     // Görev içeriğini ve atamasını güncelleme.
