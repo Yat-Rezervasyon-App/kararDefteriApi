@@ -10,8 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.UUID;
 
 @Service
@@ -21,17 +21,20 @@ public class SummaryService {
     private final MeetingService meetingService;
     private final DecisionService decisionService;
     private final TaskService taskService;
+    private final Clock clock;
 
     public SummaryService(
             ProjectService projectService,
             MeetingService meetingService,
             DecisionService decisionService,
-            TaskService taskService
+            TaskService taskService,
+            Clock clock
     ) {
         this.projectService = projectService;
         this.meetingService = meetingService;
         this.decisionService = decisionService;
         this.taskService = taskService;
+        this.clock = clock;
     }
 
     public ProjectSummaryResponseDto getProjectSummary(
@@ -45,9 +48,7 @@ public class SummaryService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
-        OffsetDateTime now = OffsetDateTime.now(
-                ZoneId.of("Europe/Istanbul")
-        );
+        OffsetDateTime now = OffsetDateTime.now(clock);
 
         return new ProjectSummaryResponseDto(
                 meetingService.countMeetingsByProjectId(projectId),
@@ -58,9 +59,7 @@ public class SummaryService {
     }
 
     public UserSummaryResponseDto getUserSummary(UUID userId) {
-        OffsetDateTime now = OffsetDateTime.now(
-                ZoneId.of("Europe/Istanbul")
-        );
+        OffsetDateTime now = OffsetDateTime.now(clock);
 
         return new UserSummaryResponseDto(
                 taskService.countOpenTasksByAssigneeId(userId),

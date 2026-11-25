@@ -1,4 +1,3 @@
-
 package com.tein.karardefteri.decision.service;
 
 import com.tein.karardefteri.decision.dto.DecisionCreateRequest;
@@ -8,13 +7,15 @@ import com.tein.karardefteri.decision.entity.DecisionStatus;
 import com.tein.karardefteri.decision.repository.DecisionRepository;
 import com.tein.karardefteri.meeting.entity.Meeting;
 import com.tein.karardefteri.meeting.repository.MeetingRepository;
+import jakarta.persistence.EntityManager;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.UUID;
@@ -25,14 +26,25 @@ public class DecisionService {
     private final DecisionRepository decisionRepository;
     private final MeetingRepository meetingRepository;
     private final JdbcTemplate jdbcTemplate;
+    private final EntityManager entityManager;
 
     public DecisionService(
             DecisionRepository decisionRepository,
             MeetingRepository meetingRepository,
             JdbcTemplate jdbcTemplate) {
+        this(decisionRepository, meetingRepository, jdbcTemplate, null);
+    }
+
+    @Autowired
+    public DecisionService(
+            DecisionRepository decisionRepository,
+            MeetingRepository meetingRepository,
+            JdbcTemplate jdbcTemplate,
+            EntityManager entityManager) {
         this.decisionRepository = decisionRepository;
         this.meetingRepository = meetingRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.entityManager = entityManager;
     }
 
     public Page<Decision> getDecisionsByMeetingId(
@@ -99,7 +111,7 @@ public class DecisionService {
         decision.setContent(request.getContent());
         decision.setStatus(DecisionStatus.ACTIVE);
 
-        return decisionRepository.save(decision);
+        return decisionRepository.saveAndFlush(decision);
     }
 
     @Transactional
@@ -118,7 +130,7 @@ public class DecisionService {
 
         decision.setContent(request.getContent());
 
-        return decisionRepository.save(decision);
+        return decisionRepository.saveAndFlush(decision);
     }
 
     @Transactional
@@ -135,6 +147,7 @@ public class DecisionService {
         checkProjectNotArchived(meeting);
 
         decisionRepository.delete(decision);
+        decisionRepository.flush();
     }
 
     @Transactional
@@ -153,7 +166,7 @@ public class DecisionService {
 
         decision.setStatus(request.getStatus());
 
-        return decisionRepository.save(decision);
+        return decisionRepository.saveAndFlush(decision);
     }
 
     private Decision getDecision(UUID id) {
@@ -198,6 +211,10 @@ public class DecisionService {
     }
 
     private void checkProjectNotArchived(Meeting meeting) {
+        if (entityManager != null) {
+            entityManager.flush();
+        }
+
         Boolean archived = jdbcTemplate.queryForObject(
                 "SELECT archived FROM projects WHERE id = ?",
                 Boolean.class,
