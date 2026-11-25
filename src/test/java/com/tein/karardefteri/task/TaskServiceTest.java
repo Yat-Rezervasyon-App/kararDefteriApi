@@ -1,5 +1,5 @@
-package com.tein.karardefteri.task;
 
+package com.tein.karardefteri.task;
 import com.tein.karardefteri.meeting.entity.Meeting;
 import com.tein.karardefteri.meeting.service.MeetingService;
 import com.tein.karardefteri.project.entity.Project;
@@ -18,7 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -28,15 +27,17 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
-
 @ExtendWith(MockitoExtension.class)
 class TaskServiceTest {
 
@@ -52,7 +53,6 @@ class TaskServiceTest {
     @Mock
     private ProjectService projectService;
 
-    @InjectMocks
     private TaskService taskService;
 
     private UUID meetingId;
@@ -66,7 +66,16 @@ class TaskServiceTest {
         projectId = UUID.randomUUID();
         ownerId = UUID.randomUUID();
 
-        project = new Project();
+        taskService = new TaskService(
+                taskRepository,
+                meetingService,
+                userService,
+                projectService,
+                Clock.fixed(Instant.parse("2026-11-18T09:00:00Z"),
+                        ZoneId.of("Europe/Istanbul"))
+        );
+
+        Project project = new Project();
         project.setName("Test projesi");
 
         Meeting defaultMeeting = createMeeting(ownerId);
@@ -143,6 +152,7 @@ class TaskServiceTest {
 
         verify(taskRepository).findByMeetingId(meetingId);
     }
+
     @Test
     void countOpenTasksByAssigneeId_shouldReturnCount() {
         UUID assigneeId = UUID.randomUUID();
@@ -160,7 +170,8 @@ class TaskServiceTest {
     @Test
     void countOverdueTasksByAssigneeId_shouldReturnCount() {
         UUID assigneeId = UUID.randomUUID();
-        OffsetDateTime now = OffsetDateTime.parse("2026-11-05T12:00:00+03:00");
+        OffsetDateTime now =
+                OffsetDateTime.parse("2026-11-05T12:00:00+03:00");
 
         when(taskRepository.countOverdueTasksByAssigneeId(assigneeId, now))
                 .thenReturn(2L);
@@ -182,8 +193,7 @@ class TaskServiceTest {
         when(taskRepository.findByAssigneeId(userId))
                 .thenReturn(List.of(task));
 
-        List<TaskResponseDto> result =
-                taskService.getMyTasks(userId);
+        List<TaskResponseDto> result = taskService.getMyTasks(userId);
 
         assertEquals(1, result.size());
         assertEquals("Test görevi", result.get(0).title());
@@ -433,6 +443,32 @@ class TaskServiceTest {
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
 
         verify(taskRepository, never()).save(any(Task.class));
+    }
+
+    @Test
+    void updateTaskStatus_shouldAllowAssigneeToUpdateStatus() {
+        UUID assigneeId = UUID.randomUUID();
+
+        Task task = createTask();
+        task.setAssigneeId(assigneeId);
+
+        when(taskRepository.findById(1L))
+                .thenReturn(Optional.of(task));
+
+        when(taskRepository.save(any(Task.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        TaskResponseDto response = taskService.updateTaskStatus(
+                1L,
+                "DONE",
+                assigneeId
+        );
+
+        assertNotNull(response);
+        assertEquals("DONE", response.status());
+        assertEquals(TaskStatus.DONE, task.getStatus());
+
+        verify(taskRepository).save(task);
     }
 
     @Test
@@ -770,7 +806,6 @@ class TaskServiceTest {
     // Hafta 4: Filtreleme ve sayfalama testi.
     @Test
     void getTasks_shouldApplyFiltersAndPagination() {
-
         UUID assigneeId = UUID.randomUUID();
 
         Task task = createTask();
@@ -833,7 +868,6 @@ class TaskServiceTest {
     // Başlangıç tarihi bitiş tarihinden sonra olamaz.
     @Test
     void getTasks_shouldThrow400WhenDueFromIsAfterDueTo() {
-
         OffsetDateTime dueFrom =
                 OffsetDateTime.parse("2026-11-20T00:00:00+03:00");
 
@@ -863,5 +897,31 @@ class TaskServiceTest {
         );
 
         verifyNoInteractions(taskRepository);
+    }
+    @Test
+    void countOpenTasksByProjectId_shouldReturnCount() {
+        when(taskRepository.countOpenTasksByProjectId(projectId))
+                .thenReturn(5L);
+
+        long result = taskService.countOpenTasksByProjectId(projectId);
+
+        assertEquals(5L, result);
+
+        verify(taskRepository).countOpenTasksByProjectId(projectId);
+    }
+
+    @Test
+    void countOverdueTasksByProjectId_shouldReturnCount() {
+        OffsetDateTime now =
+                OffsetDateTime.parse("2026-11-18T12:00:00+03:00");
+
+        when(taskRepository.countOverdueTasksByProjectId(projectId, now))
+                .thenReturn(2L);
+
+        long result = taskService.countOverdueTasksByProjectId(projectId, now);
+
+        assertEquals(2L, result);
+
+        verify(taskRepository).countOverdueTasksByProjectId(projectId, now);
     }
 }

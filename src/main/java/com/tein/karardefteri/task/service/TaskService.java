@@ -37,23 +37,23 @@ public class TaskService {
     private final MeetingService meetingService;
     private final UserService userService;
     private final ProjectService projectService;
+    private final Clock clock;
 
     private static final ZoneId TURKEY_ZONE =
             ZoneId.of("Europe/Istanbul");
-
-    private final Clock clock =
-            Clock.system(TURKEY_ZONE);
 
     public TaskService(
             TaskRepository taskRepository,
             MeetingService meetingService,
             UserService userService,
-            ProjectService projectService) {
+            ProjectService projectService,
+            Clock clock) {
 
         this.taskRepository = taskRepository;
         this.meetingService = meetingService;
         this.userService = userService;
         this.projectService = projectService;
+        this.clock = clock;
     }
 
     // Toplantı ve bağlı projenin arşiv durumunu kontrol eder.
@@ -170,7 +170,6 @@ public class TaskService {
     }
 
     // Eski kullanım: Giriş yapan kullanıcının görevlerini listeler.
-    // Mevcut testler ve diğer olası çağrılar için korunmuştur.
     @Transactional(readOnly = true)
     public List<TaskResponseDto> getMyTasks(UUID userId) {
 
