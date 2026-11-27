@@ -58,11 +58,13 @@ class TaskServiceTest {
     private UUID meetingId;
     private UUID projectId;
     private Project project;
+    private UUID ownerId;
 
     @BeforeEach
     void setUp() {
         meetingId = UUID.randomUUID();
         projectId = UUID.randomUUID();
+        ownerId = UUID.randomUUID();
 
         taskService = new TaskService(
                 taskRepository,
@@ -76,10 +78,13 @@ class TaskServiceTest {
         Project project = new Project();
         project.setName("Test projesi");
 
-        Meeting defaultMeeting = createMeeting(UUID.randomUUID());
+        Meeting defaultMeeting = createMeeting(ownerId);
 
         lenient().when(projectService.getProjectById(projectId))
                 .thenReturn(project);
+
+        lenient().when(projectService.isOwner(projectId, ownerId))
+                .thenReturn(true);
 
         lenient().when(meetingService.getMeetingById(any(UUID.class)))
                 .thenReturn(defaultMeeting);
@@ -121,7 +126,7 @@ class TaskServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         TaskResponseDto response =
-                taskService.createTask(meetingId, request);
+                taskService.createTask(meetingId, request, ownerId, false);
 
         assertNotNull(response);
         assertEquals("Test görevi", response.title());
@@ -140,7 +145,7 @@ class TaskServiceTest {
                 .thenReturn(List.of());
 
         List<TaskResponseDto> result =
-                taskService.getTasksByMeetingId(meetingId);
+                taskService.getTasksByMeetingId(meetingId, ownerId, false);
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
@@ -204,7 +209,8 @@ class TaskServiceTest {
         when(taskRepository.findById(1L))
                 .thenReturn(Optional.of(task));
 
-        TaskResponseDto response = taskService.getTaskById(1L);
+        TaskResponseDto response =
+                taskService.getTaskById(1L, ownerId, false);
 
         assertNotNull(response);
         assertEquals(meetingId, response.meetingId());
@@ -222,7 +228,7 @@ class TaskServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> taskService.getTaskById(99L)
+                () -> taskService.getTaskById(99L, ownerId, false)
         );
 
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
@@ -230,7 +236,6 @@ class TaskServiceTest {
 
     @Test
     void updateTask_shouldAllowMeetingOwner() {
-        UUID ownerId = UUID.randomUUID();
 
         Meeting meeting = createMeeting(ownerId);
         Task task = createTask();
@@ -285,7 +290,7 @@ class TaskServiceTest {
     }
 
     @Test
-    void updateTask_shouldThrow403WhenUserIsNotMeetingOwnerOrAdmin() {
+    void updateTask_shouldThrow403WhenUserIsNotProjectOwnerOrAdmin() {
         UUID anotherUserId = UUID.randomUUID();
 
         Meeting meeting = createMeeting(UUID.randomUUID());
@@ -317,7 +322,6 @@ class TaskServiceTest {
 
     @Test
     void updateTask_shouldThrow400WhenPriorityIsBlank() {
-        UUID ownerId = UUID.randomUUID();
 
         Meeting meeting = createMeeting(ownerId);
         Task task = createTask();
@@ -348,7 +352,6 @@ class TaskServiceTest {
 
     @Test
     void updateTask_shouldThrow400WhenPriorityIsInvalid() {
-        UUID ownerId = UUID.randomUUID();
 
         Meeting meeting = createMeeting(ownerId);
         Task task = createTask();
@@ -379,7 +382,6 @@ class TaskServiceTest {
 
     @Test
     void updateTask_shouldThrow409WhenAssigneeIsInactive() {
-        UUID ownerId = UUID.randomUUID();
         UUID inactiveUserId = UUID.randomUUID();
 
         Meeting meeting = createMeeting(ownerId);
@@ -511,7 +513,7 @@ class TaskServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> taskService.createTask(meetingId, request)
+                () -> taskService.createTask(meetingId, request, ownerId, false)
         );
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
@@ -521,7 +523,7 @@ class TaskServiceTest {
 
     @Test
     void createTask_shouldThrow409WhenMeetingIsArchived() {
-        Meeting meeting = createMeeting(UUID.randomUUID());
+        Meeting meeting = createMeeting(ownerId);
         meeting.setArchived(true);
 
         when(meetingService.getMeetingById(meetingId))
@@ -532,7 +534,7 @@ class TaskServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> taskService.createTask(meetingId, request)
+                () -> taskService.createTask(meetingId, request, ownerId, false)
         );
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
@@ -542,7 +544,7 @@ class TaskServiceTest {
 
     @Test
     void createTask_shouldThrow409WhenProjectIsArchived() {
-        Meeting meeting = createMeeting(UUID.randomUUID());
+        Meeting meeting = createMeeting(ownerId);
 
         Project archivedProject = new Project();
         archivedProject.setName("Arşivli proje");
@@ -559,7 +561,7 @@ class TaskServiceTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> taskService.createTask(meetingId, request)
+                () -> taskService.createTask(meetingId, request, ownerId, false)
         );
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
@@ -571,7 +573,7 @@ class TaskServiceTest {
     void getTasksByMeetingId_shouldAllowReadingWhenMeetingIsArchived() {
         UUID archivedMeetingId = UUID.randomUUID();
 
-        Meeting archivedMeeting = createMeeting(UUID.randomUUID());
+        Meeting archivedMeeting = createMeeting(ownerId);
         archivedMeeting.setArchived(true);
 
         Task task = createTask();
@@ -584,7 +586,7 @@ class TaskServiceTest {
                 .thenReturn(List.of(task));
 
         List<TaskResponseDto> result =
-                taskService.getTasksByMeetingId(archivedMeetingId);
+                taskService.getTasksByMeetingId(archivedMeetingId, ownerId, false);
 
         assertEquals(1, result.size());
         assertEquals("Test görevi", result.get(0).title());
@@ -594,7 +596,7 @@ class TaskServiceTest {
 
     @Test
     void getTasksByMeetingId_shouldAllowReadingWhenProjectIsArchived() {
-        Meeting meeting = createMeeting(UUID.randomUUID());
+        Meeting meeting = createMeeting(ownerId);
 
         Project archivedProject = new Project();
         archivedProject.setName("Arşivli proje");
@@ -612,7 +614,7 @@ class TaskServiceTest {
                 .thenReturn(List.of(task));
 
         List<TaskResponseDto> result =
-                taskService.getTasksByMeetingId(meetingId);
+                taskService.getTasksByMeetingId(meetingId, ownerId, false);
 
         assertEquals(1, result.size());
         assertEquals("Test görevi", result.get(0).title());
@@ -637,6 +639,9 @@ class TaskServiceTest {
 
         when(meetingService.getMeetingById(meetingId))
                 .thenReturn(meeting);
+
+        when(projectService.isOwner(projectId, ownerId))
+                .thenReturn(true);
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
@@ -672,6 +677,9 @@ class TaskServiceTest {
 
         when(meetingService.getMeetingById(meetingId))
                 .thenReturn(meeting);
+
+        when(projectService.isOwner(projectId, ownerId))
+                .thenReturn(true);
 
         when(projectService.getProjectById(projectId))
                 .thenReturn(archivedProject);
@@ -778,6 +786,9 @@ class TaskServiceTest {
         when(meetingService.getMeetingById(meetingId))
                 .thenReturn(meeting);
 
+        when(projectService.isOwner(projectId, ownerId))
+                .thenReturn(true);
+
         when(taskRepository.save(any(Task.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -822,7 +833,9 @@ class TaskServiceTest {
                 dueTo,
                 null,
                 1,
-                5
+                5,
+                ownerId,
+                false
         );
 
         ArgumentCaptor<Pageable> pageableCaptor =
@@ -864,7 +877,7 @@ class TaskServiceTest {
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
                 () -> taskService.getTasks(
-                        null,
+                        projectId,
                         null,
                         null,
                         null,
@@ -872,7 +885,9 @@ class TaskServiceTest {
                         dueTo,
                         null,
                         0,
-                        20
+                        20,
+                        ownerId,
+                        false
                 )
         );
 
