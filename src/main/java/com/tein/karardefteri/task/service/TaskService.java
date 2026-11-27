@@ -78,13 +78,41 @@ public class TaskService {
         }
     }
 
+    // Kullanıcının proje üzerinde görev erişim yetkisini kontrol eder.
+    private void checkProjectAccess(
+            UUID projectId,
+            UUID currentUserId,
+            boolean isAdmin) {
+
+        if (isAdmin) {
+            return;
+        }
+
+        if (currentUserId == null
+                || !projectService.isOwner(projectId, currentUserId)) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You do not have permission to access this project's tasks"
+            );
+        }
+    }
+
     // Görev oluşturma.
     @Transactional
     public TaskResponseDto createTask(
             UUID meetingId,
-            TaskRequestDto requestDto) {
+            TaskRequestDto requestDto,
+            UUID currentUserId,
+            boolean isAdmin) {
 
         Meeting meeting = meetingService.getMeetingById(meetingId);
+
+        checkProjectAccess(
+                meeting.getProjectId(),
+                currentUserId,
+                isAdmin
+        );
 
         checkTaskParentsAreActive(meeting);
 
@@ -122,9 +150,18 @@ public class TaskService {
 
     // Toplantıya ait görevleri listeleme.
     @Transactional(readOnly = true)
-    public List<TaskResponseDto> getTasksByMeetingId(UUID meetingId) {
+    public List<TaskResponseDto> getTasksByMeetingId(
+            UUID meetingId,
+            UUID currentUserId,
+            boolean isAdmin) {
 
-        meetingService.getMeetingById(meetingId);
+        Meeting meeting = meetingService.getMeetingById(meetingId);
+
+        checkProjectAccess(
+                meeting.getProjectId(),
+                currentUserId,
+                isAdmin
+        );
 
         return taskRepository.findByMeetingId(meetingId)
                 .stream()
@@ -153,7 +190,20 @@ public class TaskService {
             OffsetDateTime dueTo,
             Boolean overdue,
             int page,
-            int size) {
+            int size,
+            UUID currentUserId,
+            boolean isAdmin) {
+
+        if (!isAdmin && projectId == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You must specify a project to access its tasks"
+            );
+        }
+
+        if (projectId != null) {
+            checkProjectAccess(projectId, currentUserId, isAdmin);
+        }
 
         return searchTasks(
                 projectId,
@@ -303,9 +353,24 @@ public class TaskService {
 
     // ID ile görev getirme.
     @Transactional(readOnly = true)
-    public TaskResponseDto getTaskById(Long id) {
+    public TaskResponseDto getTaskById(
+            Long id,
+            UUID currentUserId,
+            boolean isAdmin) {
 
-        return mapToDto(findTaskById(id));
+        Task task = findTaskById(id);
+
+        Meeting meeting = meetingService.getMeetingById(
+                task.getMeetingId()
+        );
+
+        checkProjectAccess(
+                meeting.getProjectId(),
+                currentUserId,
+                isAdmin
+        );
+
+        return mapToDto(task);
     }
 
     // Görev içeriğini ve atamasını güncelleme.
@@ -322,15 +387,7 @@ public class TaskService {
                 task.getMeetingId()
         );
 
-        if (!isAdmin
-                && (currentUserId == null
-                || !currentUserId.equals(meeting.getCreatedBy()))) {
-
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Only the meeting owner or ADMIN can update the task"
-            );
-        }
+        checkProjectAccess(meeting.getProjectId(), currentUserId, isAdmin);
 
         checkTaskParentsAreActive(meeting);
 

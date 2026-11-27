@@ -456,7 +456,7 @@ public class TaskPostgresIntegrationTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> taskService.createTask(meeting.getId(), request)
+                () -> taskService.createTask(meeting.getId(), request, owner.getId(), false)
         );
 
         assertThat(exception.getStatusCode())
@@ -487,7 +487,7 @@ public class TaskPostgresIntegrationTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> taskService.createTask(meeting.getId(), request)
+                () -> taskService.createTask(meeting.getId(), request, owner.getId(), false)
         );
 
         assertThat(exception.getStatusCode())
@@ -517,7 +517,7 @@ public class TaskPostgresIntegrationTest {
 
         ResponseStatusException exception = assertThrows(
                 ResponseStatusException.class,
-                () -> taskService.createTask(meeting.getId(), request)
+                () -> taskService.createTask(meeting.getId(), request, owner.getId(), false)
         );
 
         assertThat(exception.getStatusCode())
