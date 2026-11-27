@@ -6,16 +6,21 @@ import com.tein.karardefteri.project.service.ProjectService;
 import com.tein.karardefteri.summary.dto.ProjectSummaryResponseDto;
 import com.tein.karardefteri.summary.dto.UserSummaryResponseDto;
 import com.tein.karardefteri.task.service.TaskService;
+import java.time.ZoneId;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Clock;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
 public class SummaryService {
+
+    private static final ZoneId TURKEY_ZONE =
+            ZoneId.of("Europe/Istanbul");
 
     private final ProjectService projectService;
     private final MeetingService meetingService;
@@ -48,22 +53,27 @@ public class SummaryService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 
-        OffsetDateTime now = OffsetDateTime.now(clock);
+        OffsetDateTime todayStart = LocalDate.now(clock)
+                .atStartOfDay(TURKEY_ZONE)
+                .toOffsetDateTime();
 
         return new ProjectSummaryResponseDto(
                 meetingService.countMeetingsByProjectId(projectId),
                 decisionService.countActiveDecisionsByProjectId(projectId),
                 taskService.countOpenTasksByProjectId(projectId),
-                taskService.countOverdueTasksByProjectId(projectId, now)
+                taskService.countOverdueTasksByProjectId(projectId, todayStart)
         );
     }
 
     public UserSummaryResponseDto getUserSummary(UUID userId) {
-        OffsetDateTime now = OffsetDateTime.now(clock);
+
+        OffsetDateTime todayStart = LocalDate.now(clock)
+                .atStartOfDay(TURKEY_ZONE)
+                .toOffsetDateTime();
 
         return new UserSummaryResponseDto(
                 taskService.countOpenTasksByAssigneeId(userId),
-                taskService.countOverdueTasksByAssigneeId(userId, now)
+                taskService.countOverdueTasksByAssigneeId(userId, todayStart)
         );
     }
 }

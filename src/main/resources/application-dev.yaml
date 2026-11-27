@@ -1,0 +1,12 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:postgresql://localhost:5432/karardefteri_test
+    username: ${DB_USERNAME:karardefteri}
+    password: ${DB_PASSWORD}
+
+app:
+  seed:
+    enabled: true

@@ -1,0 +1,307 @@
+﻿{
+    "info":  {
+                 "name":  "KararDefteri - Task \u0026 Summary API",
+                 "description":  "Hafta 6 görev ve özet API test koleksiyonu. Önce CSRF, ardından giriş isteği çalıştırılmalıdır.",
+                 "schema":  "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+             },
+    "variable":  [
+                     {
+                         "key":  "baseUrl",
+                         "value":  "http://localhost:8080"
+                     },
+                     {
+                         "key":  "email",
+                         "value":  "member1@demo.local"
+                     },
+                     {
+                         "key":  "password",
+                         "value":  "Member123!"
+                     },
+                     {
+                         "key":  "csrfToken",
+                         "value":  ""
+                     },
+                     {
+                         "key":  "projectId",
+                         "value":  "648a6d8a-9c96-46a4-9944-74447bcbaa8d"
+                     },
+                     {
+                         "key":  "meetingId",
+                         "value":  "f60911a1-0b86-4f93-9404-491e247d0b36"
+                     },
+                     {
+                         "key":  "taskId",
+                         "value":  ""
+                     },
+                     {
+                         "key":  "assigneeId",
+                         "value":  "dd12a278-ff95-4c86-8a4e-f7d7d4969212"
+                     }
+                 ],
+    "item":  [
+                 {
+                     "name":  "1 - Authentication",
+                     "item":  [
+                                  {
+                                      "name":  "Get CSRF Token",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/api/auth/csrf"
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "listen":  "test",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "const data = pm.response.json();",
+                                                                                    "pm.collectionVariables.set(\u0027csrfToken\u0027, data.token);",
+                                                                                    "pm.test(\u0027CSRF token alindi\u0027, function () {",
+                                                                                    "    pm.expect(data.token).to.be.a(\u0027string\u0027).and.not.empty;",
+                                                                                    "});",
+                                                                                    "pm.test(\u0027CSRF header bilgisi mevcut\u0027, function () {",
+                                                                                    "    pm.expect(data.headerName).to.eql(\u0027X-XSRF-TOKEN\u0027);",
+                                                                                    "});"
+                                                                                ]
+                                                                   }
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Login",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "X-XSRF-TOKEN",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     },
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/x-www-form-urlencoded"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "urlencoded",
+                                                                   "urlencoded":  [
+                                                                                      {
+                                                                                          "key":  "email",
+                                                                                          "value":  "{{email}}",
+                                                                                          "type":  "text"
+                                                                                      },
+                                                                                      {
+                                                                                          "key":  "password",
+                                                                                          "value":  "{{password}}",
+                                                                                          "type":  "text"
+                                                                                      }
+                                                                                  ]
+                                                               },
+                                                      "url":  "{{baseUrl}}/login"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Logout",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "X-XSRF-TOKEN",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     }
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/logout"
+                                                  }
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "2 - Tasks",
+                     "item":  [
+                                  {
+                                      "name":  "Create Task",
+                                      "request":  {
+                                                      "method":  "POST",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     },
+                                                                     {
+                                                                         "key":  "X-XSRF-TOKEN",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"title\": \"Postman test görevi\",\n  \"description\": \"Hafta 6 API testi\",\n  \"assigneeId\": \"{{assigneeId}}\",\n  \"dueDate\": \"2026-12-01T12:00:00Z\",\n  \"status\": \"TODO\",\n  \"priority\": \"MEDIUM\"\n}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/meetings/{{meetingId}}/tasks"
+                                                  },
+                                      "event":  [
+                                                    {
+                                                        "listen":  "test",
+                                                        "script":  {
+                                                                       "type":  "text/javascript",
+                                                                       "exec":  [
+                                                                                    "if (pm.response.code === 201 || pm.response.code === 200) {",
+                                                                                    "    const data = pm.response.json();",
+                                                                                    "    if (data.id) pm.collectionVariables.set(\u0027taskId\u0027, data.id);",
+                                                                                    "}",
+                                                                                    "pm.test(\u0027Görev oluşturma isteği tamamlandı\u0027, function () {",
+                                                                                    "    pm.expect([200, 201]).to.include(pm.response.code);",
+                                                                                    "});"
+                                                                                ]
+                                                                   }
+                                                    }
+                                                ]
+                                  },
+                                  {
+                                      "name":  "Get Tasks By Meeting",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/api/meetings/{{meetingId}}/tasks"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Get My Tasks",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  {
+                                                                  "raw":  "{{baseUrl}}/api/users/me/tasks?page=0\u0026size=20",
+                                                                  "host":  [
+                                                                               "{{baseUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "users",
+                                                                               "me",
+                                                                               "tasks"
+                                                                           ],
+                                                                  "query":  [
+                                                                                {
+                                                                                    "key":  "page",
+                                                                                    "value":  "0"
+                                                                                },
+                                                                                {
+                                                                                    "key":  "size",
+                                                                                    "value":  "20"
+                                                                                }
+                                                                            ]
+                                                              }
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Get All Tasks With Filters",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/api/tasks?projectId={{projectId}}\u0026status=TODO\u0026priority=HIGH\u0026page=0\u0026size=20"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Get Task By ID",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/api/tasks/{{taskId}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Update Task",
+                                      "request":  {
+                                                      "method":  "PUT",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     },
+                                                                     {
+                                                                         "key":  "X-XSRF-TOKEN",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"title\": \"Güncellenmiş test görevi\",\n  \"description\": \"Postman PUT testi\",\n  \"assigneeId\": \"{{assigneeId}}\",\n  \"dueDate\": \"2026-12-05T12:00:00Z\",\n  \"priority\": \"HIGH\"\n}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/tasks/{{taskId}}"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Update Task Status",
+                                      "request":  {
+                                                      "method":  "PATCH",
+                                                      "header":  [
+                                                                     {
+                                                                         "key":  "Content-Type",
+                                                                         "value":  "application/json"
+                                                                     },
+                                                                     {
+                                                                         "key":  "X-XSRF-TOKEN",
+                                                                         "value":  "{{csrfToken}}"
+                                                                     }
+                                                                 ],
+                                                      "body":  {
+                                                                   "mode":  "raw",
+                                                                   "raw":  "{\n  \"status\": \"DONE\"\n}",
+                                                                   "options":  {
+                                                                                   "raw":  {
+                                                                                               "language":  "json"
+                                                                                           }
+                                                                               }
+                                                               },
+                                                      "url":  "{{baseUrl}}/api/tasks/{{taskId}}/status"
+                                                  }
+                                  }
+                              ]
+                 },
+                 {
+                     "name":  "3 - Summary",
+                     "item":  [
+                                  {
+                                      "name":  "Get Project Summary",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/api/projects/{{projectId}}/summary"
+                                                  }
+                                  },
+                                  {
+                                      "name":  "Get My Summary",
+                                      "request":  {
+                                                      "method":  "GET",
+                                                      "header":  [
+
+                                                                 ],
+                                                      "url":  "{{baseUrl}}/api/users/me/summary"
+                                                  }
+                                  }
+                              ]
+                 }
+             ]
+}
